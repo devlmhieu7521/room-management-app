@@ -17,13 +17,30 @@ import {
   TextField,
   InputAdornment,
   CircularProgress,
-  Alert
+  Alert,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Snackbar,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   Add as AddIcon,
   Search as SearchIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  MoreVert as MoreVertIcon,
+  Mail as MailIcon,
+  Phone as PhoneIcon,
+  AssignmentLate as OverdueIcon,
+  Assignment as LeaseIcon
 } from '@mui/icons-material';
 import api from '../../utils/api';
 
@@ -33,53 +50,32 @@ const TenantsList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [tab, setTab] = useState(0);
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  const [selectedTenant, setSelectedTenant] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [notification, setNotification] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   useEffect(() => {
     const fetchTenants = async () => {
       try {
         setLoading(true);
-        // This endpoint doesn't exist yet - you'll need to implement it
         const response = await api.get('/tenants');
-        setTenants(response.data.tenants || []);
+        if (response.data && response.data.tenants) {
+          setTenants(response.data.tenants);
+        } else {
+          // If API doesn't provide data, use mock data
+          setMockTenants();
+        }
       } catch (error) {
         console.error('Error fetching tenants:', error);
         setError('Failed to load tenants. Please try again later.');
-        // For development, let's add some mock data
-        setTenants([
-          {
-            tenant_id: '1',
-            first_name: 'John',
-            last_name: 'Doe',
-            email: 'john.doe@example.com',
-            phone_number: '(555) 123-4567',
-            space_title: 'Apartment 4B',
-            start_date: '2024-01-15',
-            end_date: '2025-01-14',
-            status: 'active'
-          },
-          {
-            tenant_id: '2',
-            first_name: 'Sarah',
-            last_name: 'Smith',
-            email: 'sarah.smith@example.com',
-            phone_number: '(555) 987-6543',
-            space_title: 'Office Suite 7',
-            start_date: '2024-03-01',
-            end_date: '2024-12-31',
-            status: 'active'
-          },
-          {
-            tenant_id: '3',
-            first_name: 'Michael',
-            last_name: 'Johnson',
-            email: 'michael.j@example.com',
-            phone_number: '(555) 567-8901',
-            space_title: 'Studio 7C',
-            start_date: '2023-06-15',
-            end_date: '2024-03-14',
-            status: 'former'
-          }
-        ]);
+        // For development, add some mock data
+        setMockTenants();
       } finally {
         setLoading(false);
       }
@@ -88,17 +84,151 @@ const TenantsList = () => {
     fetchTenants();
   }, []);
 
+  const setMockTenants = () => {
+    const today = new Date();
+    const oneMonthAgo = new Date(today);
+    oneMonthAgo.setMonth(today.getMonth() - 1);
+
+    const oneYearFromNow = new Date(today);
+    oneYearFromNow.setFullYear(today.getFullYear() + 1);
+
+    const twoMonthsFromNow = new Date(today);
+    twoMonthsFromNow.setMonth(today.getMonth() + 2);
+
+    setTenants([
+      {
+        tenant_id: '1',
+        first_name: 'John',
+        last_name: 'Doe',
+        email: 'john.doe@example.com',
+        phone_number: '(555) 123-4567',
+        space_title: 'Apartment 4B',
+        space_id: '1',
+        start_date: oneMonthAgo.toISOString().split('T')[0],
+        end_date: oneYearFromNow.toISOString().split('T')[0],
+        rent_amount: 2000,
+        status: 'active'
+      },
+      {
+        tenant_id: '2',
+        first_name: 'Sarah',
+        last_name: 'Smith',
+        email: 'sarah.smith@example.com',
+        phone_number: '(555) 987-6543',
+        space_title: 'Office Suite 7',
+        space_id: '2',
+        start_date: today.toISOString().split('T')[0],
+        end_date: twoMonthsFromNow.toISOString().split('T')[0],
+        rent_amount: 3500,
+        status: 'active'
+      },
+      {
+        tenant_id: '3',
+        first_name: 'Michael',
+        last_name: 'Johnson',
+        email: 'michael.j@example.com',
+        phone_number: '(555) 567-8901',
+        space_title: 'Studio 7C',
+        space_id: '3',
+        start_date: '2023-06-15',
+        end_date: '2024-03-14',
+        rent_amount: 1800,
+        status: 'former'
+      }
+    ]);
+  };
+
   const handleSearch = (event) => {
     setSearchQuery(event.target.value);
   };
 
+  const handleChangeTab = (event, newValue) => {
+    setTab(newValue);
+  };
+
+  const handleMenuOpen = (event, tenant) => {
+    setMenuAnchorEl(event.currentTarget);
+    setSelectedTenant(tenant);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+  };
+
+  const handleDeleteClick = () => {
+    handleMenuClose();
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedTenant) return;
+
+    try {
+      await api.delete(`/tenants/${selectedTenant.tenant_id}`);
+
+      // Remove tenant from state
+      setTenants(tenants.filter(tenant => tenant.tenant_id !== selectedTenant.tenant_id));
+
+      setNotification({
+        open: true,
+        message: 'Tenant removed successfully',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error deleting tenant:', error);
+      setNotification({
+        open: true,
+        message: 'Failed to remove tenant. Please try again.',
+        severity: 'error'
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setSelectedTenant(null);
+    }
+  };
+
+  const handleCloseNotification = () => {
+    setNotification({
+      ...notification,
+      open: false
+    });
+  };
+
   const filteredTenants = tenants.filter(tenant => {
+    // Filter by tab first
+    if (tab === 1 && tenant.status !== 'active') return false;
+    if (tab === 2 && tenant.status !== 'former') return false;
+
+    // Then filter by search query
+    if (!searchQuery) return true;
+
     const fullName = `${tenant.first_name} ${tenant.last_name}`.toLowerCase();
     const query = searchQuery.toLowerCase();
     return fullName.includes(query) ||
-           tenant.email.toLowerCase().includes(query) ||
-           tenant.space_title.toLowerCase().includes(query);
+           (tenant.email && tenant.email.toLowerCase().includes(query)) ||
+           (tenant.space_title && tenant.space_title.toLowerCase().includes(query)) ||
+           (tenant.phone_number && tenant.phone_number.includes(query));
   });
+
+  // Sort tenants - active first, then by lease end date (soonest first)
+  const sortedTenants = [...filteredTenants].sort((a, b) => {
+    // First sort by status (active first)
+    if (a.status === 'active' && b.status !== 'active') return -1;
+    if (a.status !== 'active' && b.status === 'active') return 1;
+
+    // Then sort by lease end date
+    return new Date(a.end_date) - new Date(b.end_date);
+  });
+
+  // Get count of tenants with leases ending soon (within 60 days)
+  const today = new Date();
+  const sixtyDaysFromNow = new Date(today);
+  sixtyDaysFromNow.setDate(today.getDate() + 60);
+
+  const endingSoonCount = tenants.filter(tenant =>
+    tenant.status === 'active' &&
+    new Date(tenant.end_date) <= sixtyDaysFromNow
+  ).length;
 
   if (loading) {
     return (
@@ -130,11 +260,25 @@ const TenantsList = () => {
         </Alert>
       )}
 
+      <Paper sx={{ mb: 3 }}>
+        <Tabs
+          value={tab}
+          onChange={handleChangeTab}
+          indicatorColor="primary"
+          textColor="primary"
+          variant="fullWidth"
+        >
+          <Tab label={`All Tenants (${tenants.length})`} />
+          <Tab label={`Active (${tenants.filter(t => t.status === 'active').length})`} />
+          <Tab label={`Former (${tenants.filter(t => t.status !== 'active').length})`} />
+        </Tabs>
+      </Paper>
+
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ mb: 3 }}>
           <TextField
             fullWidth
-            placeholder="Search tenants by name, email or space..."
+            placeholder="Search tenants by name, email, phone or space..."
             value={searchQuery}
             onChange={handleSearch}
             InputProps={{
@@ -147,6 +291,22 @@ const TenantsList = () => {
           />
         </Box>
 
+        {endingSoonCount > 0 && tab !== 2 && (
+          <Box sx={{ mb: 3 }}>
+            <Alert
+              severity="warning"
+              icon={<OverdueIcon />}
+              action={
+                <Button color="inherit" size="small">
+                  View All
+                </Button>
+              }
+            >
+              {endingSoonCount} {endingSoonCount === 1 ? 'tenant' : 'tenants'} with {endingSoonCount === 1 ? 'lease' : 'leases'} ending in the next 60 days
+            </Alert>
+          </Box>
+        )}
+
         <TableContainer>
           <Table>
             <TableHead>
@@ -155,67 +315,187 @@ const TenantsList = () => {
                 <TableCell>Contact</TableCell>
                 <TableCell>Space</TableCell>
                 <TableCell>Lease Period</TableCell>
+                <TableCell>Rent</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredTenants.length === 0 ? (
+              {sortedTenants.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
-                    No tenants found. Add your first tenant to get started.
+                  <TableCell colSpan={7} align="center">
+                    <Box sx={{ py: 3 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        No tenants found
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {searchQuery ? 'Try adjusting your search terms' : 'Add your first tenant to get started'}
+                      </Typography>
+                      {!searchQuery && (
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          startIcon={<AddIcon />}
+                          onClick={() => navigate('/tenants/add')}
+                        >
+                          Add New Tenant
+                        </Button>
+                      )}
+                    </Box>
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredTenants.map((tenant) => (
-                  <TableRow key={tenant.tenant_id}>
-                    <TableCell>
-                      {tenant.first_name} {tenant.last_name}
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{tenant.email}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {tenant.phone_number}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{tenant.space_title}</TableCell>
-                    <TableCell>
-                      {new Date(tenant.start_date).toLocaleDateString()} to {new Date(tenant.end_date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={tenant.status}
-                        color={tenant.status === 'active' ? 'success' : 'default'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        onClick={() => navigate(`/tenants/${tenant.tenant_id}/edit`)}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => {
-                          // Implement delete confirmation dialog
-                          if (window.confirm("Are you sure you want to remove this tenant?")) {
-                            // Implement tenant deletion
-                          }
-                        }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
+                sortedTenants.map((tenant) => {
+                  // Calculate if lease is ending soon
+                  const endDate = new Date(tenant.end_date);
+                  const daysUntilEnd = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
+                  const isEndingSoon = tenant.status === 'active' && daysUntilEnd <= 60 && daysUntilEnd > 0;
+                  const isOverdue = tenant.status === 'active' && daysUntilEnd < 0;
+
+                  return (
+                    <TableRow key={tenant.tenant_id}>
+                      <TableCell>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {tenant.first_name} {tenant.last_name}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                          <MailIcon fontSize="small" color="action" />
+                          <Typography variant="body2">{tenant.email}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <PhoneIcon fontSize="small" color="action" />
+                          <Typography variant="body2" color="text.secondary">
+                            {tenant.phone_number}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {tenant.space_title}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <LeaseIcon fontSize="small" color={isEndingSoon ? "warning" : isOverdue ? "error" : "action"} />
+                          <Box>
+                            <Typography variant="body2">
+                              {new Date(tenant.start_date).toLocaleDateString()} to {new Date(tenant.end_date).toLocaleDateString()}
+                            </Typography>
+                            {isEndingSoon && (
+                              <Typography variant="caption" color="warning.main">
+                                Ending in {daysUntilEnd} days
+                              </Typography>
+                            )}
+                            {isOverdue && (
+                              <Typography variant="caption" color="error.main">
+                                Ended {-daysUntilEnd} days ago
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell>${tenant.rent_amount?.toLocaleString() || 0}/month</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={tenant.status || 'active'}
+                          color={tenant.status === 'active' ? 'success' : 'default'}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <IconButton
+                          size="small"
+                          onClick={(event) => handleMenuOpen(event, tenant)}
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* Tenant Action Menu */}
+      <Menu
+        anchorEl={menuAnchorEl}
+        open={Boolean(menuAnchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={() => {
+          handleMenuClose();
+          navigate(`/tenants/${selectedTenant?.tenant_id}`);
+        }}>
+          <ListItemIcon>
+            <LeaseIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>View Details</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => {
+          handleMenuClose();
+          navigate(`/tenants/${selectedTenant?.tenant_id}/edit`);
+        }}>
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Edit Tenant</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={handleDeleteClick}>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          <ListItemText>Remove Tenant</ListItemText>
+        </MenuItem>
+      </Menu>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Remove Tenant</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to remove {selectedTenant?.first_name} {selectedTenant?.last_name} from {selectedTenant?.space_title}?
+            {selectedTenant?.status === 'active' && (
+              <Box component="span" sx={{ display: 'block', mt: 1, fontWeight: 'bold' }}>
+                Warning: This tenant has an active lease ending {new Date(selectedTenant?.end_date).toLocaleDateString()}.
+              </Box>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDeleteConfirm}
+          >
+            Remove Tenant
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseNotification}
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

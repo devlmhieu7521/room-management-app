@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -24,7 +24,13 @@ import {
   TableRow,
   CircularProgress,
   Alert,
-  Chip
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Snackbar
 } from '@mui/material';
 import {
   Home as HomeIcon,
@@ -33,7 +39,11 @@ import {
   Settings as SettingsIcon,
   Person as PersonIcon,
   Event as EventIcon,
-  Assignment as AssignmentIcon
+  Assignment as AssignmentIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  ToggleOn as ToggleOnIcon,
+  ToggleOff as ToggleOffIcon
 } from '@mui/icons-material';
 import api from '../../utils/api';
 
@@ -60,72 +70,167 @@ function TabPanel(props) {
 const SpaceManagement = () => {
   const { spaceId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [value, setValue] = useState(0);
   const [space, setSpace] = useState(null);
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [notification, setNotification] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
+  // Get space data - try to get it from location state first, then fetch from API
   useEffect(() => {
-    const fetchSpaceDetails = async () => {
+    const fetchSpaceData = async () => {
       try {
         setLoading(true);
-        // Attempt to get actual space data
-        const response = await api.get(`/spaces/${spaceId}`);
-        setSpace(response.data.space);
 
-        // If API call succeeds but no space data, set mock data
-        if (!response.data.space) {
-          setMockData();
+        // If we have space data in the location state, use it
+        if (location.state && location.state.spaceData) {
+          console.log("Using space data from location state:", location.state.spaceData);
+          setSpace(location.state.spaceData);
+
+          // For tenants, still use mock data for now
+          setMockTenants();
+        } else {
+          // Otherwise try to fetch from API
+          try {
+            const response = await api.get(`/spaces/${spaceId}`);
+            if (response.data && response.data.space) {
+              setSpace(response.data.space);
+            } else {
+              // If API doesn't return data, use mock data
+              setMockData();
+            }
+          } catch (error) {
+            console.error('Error fetching space details:', error);
+            setMockData();
+          }
         }
       } catch (error) {
-        console.error('Error fetching space details:', error);
+        console.error('Error setting up space data:', error);
         setError('Failed to load space details. Please try again later.');
-        // Set mock data if API call fails
         setMockData();
       } finally {
         setLoading(false);
       }
     };
 
-    const setMockData = () => {
-      // Mock space data for testing
-      setSpace({
-        space_id: spaceId,
-        title: 'Modern Downtown Apartment',
-        description: 'Stylish apartment in the heart of downtown with great amenities.',
-        space_type: 'Apartment',
-        capacity: 2,
-        street_address: '123 Main Street',
-        city: 'San Francisco',
-        state: 'CA',
-        zip_code: '94105',
-        country: 'USA',
-        is_active: true,
-        created_at: '2024-01-15T00:00:00Z'
-      });
+    fetchSpaceData();
+  }, [spaceId, location.state]);
 
-      // Mock tenants data
-      setTenants([
-        {
-          tenant_id: '1',
-          first_name: 'John',
-          last_name: 'Doe',
-          email: 'john.doe@example.com',
-          phone_number: '(555) 123-4567',
-          start_date: '2024-01-15',
-          end_date: '2025-01-14',
-          rent_amount: 2000,
-          status: 'active'
-        }
-      ]);
-    };
+  const setMockData = () => {
+    // Mock space data for testing
+    console.log("Setting mock space data for ID:", spaceId);
 
-    fetchSpaceDetails();
-  }, [spaceId]);
+    setSpace({
+      space_id: spaceId,
+      title: 'Modern Downtown Apartment',
+      description: 'Stylish apartment in the heart of downtown with great amenities.',
+      space_type: 'Apartment',
+      capacity: 2,
+      street_address: '123 Main Street',
+      city: 'San Francisco',
+      state: 'CA',
+      zip_code: '94105',
+      country: 'USA',
+      is_active: true,
+      created_at: '2024-01-15T00:00:00Z'
+    });
+
+    // Set mock tenants data too
+    setMockTenants();
+  };
+
+  const setMockTenants = () => {
+    // Mock tenants data
+    setTenants([
+      {
+        tenant_id: '1',
+        first_name: 'John',
+        last_name: 'Doe',
+        email: 'john.doe@example.com',
+        phone_number: '(555) 123-4567',
+        start_date: '2024-01-15',
+        end_date: '2025-01-14',
+        rent_amount: 2000,
+        status: 'active'
+      }
+    ]);
+  };
 
   const handleChange = (event, newValue) => {
     setValue(newValue);
+  };
+
+  const handleToggleStatus = async () => {
+    try {
+      const newStatus = !space.is_active;
+
+      // In a real app, you'd call the API here
+      // await api.put(`/spaces/${spaceId}`, { is_active: newStatus });
+
+      // But for now, just update the local state
+      setSpace({
+        ...space,
+        is_active: newStatus
+      });
+
+      setNotification({
+        open: true,
+        message: `Space ${space.is_active ? 'deactivated' : 'activated'} successfully`,
+        severity: 'success'
+      });
+
+      setStatusDialogOpen(false);
+    } catch (error) {
+      console.error('Error updating space status:', error);
+      setNotification({
+        open: true,
+        message: 'Failed to update space status',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleDeleteSpace = async () => {
+    try {
+      // In a real app, you'd call the API here
+      // await api.delete(`/spaces/${spaceId}`);
+
+      setNotification({
+        open: true,
+        message: 'Space deleted successfully',
+        severity: 'success'
+      });
+
+      // Redirect to my spaces after a delay
+      setTimeout(() => {
+        navigate('/my-spaces');
+      }, 2000);
+    } catch (error) {
+      console.error('Error deleting space:', error);
+      setNotification({
+        open: true,
+        message: 'Failed to delete space',
+        severity: 'error'
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  const handleCloseNotification = () => {
+    setNotification({
+      ...notification,
+      open: false
+    });
   };
 
   if (loading) {
@@ -182,13 +287,24 @@ const SpaceManagement = () => {
                   />
                 </Box>
               </Box>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => navigate(`/spaces/${spaceId}/edit`)}
-              >
-                Edit Space
-              </Button>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  color={space.is_active ? "error" : "success"}
+                  startIcon={space.is_active ? <ToggleOffIcon /> : <ToggleOnIcon />}
+                  onClick={() => setStatusDialogOpen(true)}
+                >
+                  {space.is_active ? 'Deactivate' : 'Activate'}
+                </Button>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<EditIcon />}
+                  onClick={() => navigate(`/spaces/${spaceId}/edit`, { state: { spaceData: space } })}
+                >
+                  Edit Space
+                </Button>
+              </Box>
             </Box>
           </Paper>
         </Grid>
@@ -199,7 +315,8 @@ const SpaceManagement = () => {
             <Tabs
               value={value}
               onChange={handleChange}
-              centered
+              variant="scrollable"
+              scrollButtons="auto"
             >
               <Tab icon={<HomeIcon />} label="Overview" />
               <Tab icon={<PeopleIcon />} label="Tenants" />
@@ -299,7 +416,7 @@ const SpaceManagement = () => {
                         </ListItemIcon>
                         <ListItemText
                           primary="Current Tenants"
-                          secondary={tenants.length || 0}
+                          secondary={tenants.filter(t => t.status === 'active').length || 0}
                         />
                       </ListItem>
                       <Divider />
@@ -309,7 +426,7 @@ const SpaceManagement = () => {
                         </ListItemIcon>
                         <ListItemText
                           primary="Occupancy Rate"
-                          secondary="75%"
+                          secondary={space.capacity > 0 ? `${Math.round((tenants.filter(t => t.status === 'active').length / space.capacity) * 100)}%` : '0%'}
                         />
                       </ListItem>
                       <Divider />
@@ -319,17 +436,7 @@ const SpaceManagement = () => {
                         </ListItemIcon>
                         <ListItemText
                           primary="Monthly Revenue"
-                          secondary={`$${tenants.reduce((sum, tenant) => sum + (tenant.rent_amount || 0), 0).toLocaleString()}`}
-                        />
-                      </ListItem>
-                      <Divider />
-                      <ListItem>
-                        <ListItemIcon>
-                          <AssignmentIcon />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary="Pending Tasks"
-                          secondary="2"
+                          secondary={`$${tenants.filter(t => t.status === 'active').reduce((sum, tenant) => sum + (tenant.rent_amount || 0), 0).toLocaleString()}`}
                         />
                       </ListItem>
                     </List>
@@ -342,23 +449,24 @@ const SpaceManagement = () => {
                     <Button
                       variant="outlined"
                       startIcon={<PeopleIcon />}
-                      onClick={() => navigate(`/spaces/${spaceId}/tenants/add`)}
+                      onClick={() => navigate(`/tenants/add`, { state: { defaultSpaceId: spaceId } })}
                     >
                       Add Tenant
                     </Button>
                     <Button
                       variant="outlined"
-                      startIcon={<MoneyIcon />}
-                      onClick={() => navigate(`/spaces/${spaceId}/payments/add`)}
+                      startIcon={<EditIcon />}
+                      onClick={() => navigate(`/spaces/${spaceId}/edit`, { state: { spaceData: space } })}
                     >
-                      Record Payment
+                      Edit Space Details
                     </Button>
                     <Button
                       variant="outlined"
-                      startIcon={<SettingsIcon />}
-                      onClick={() => setValue(3)} // Go to Settings tab
+                      color="error"
+                      startIcon={<DeleteIcon />}
+                      onClick={() => setDeleteDialogOpen(true)}
                     >
-                      Update Space
+                      Delete Space
                     </Button>
                   </Box>
                 </Grid>
@@ -369,13 +477,13 @@ const SpaceManagement = () => {
             <TabPanel value={value} index={1}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Typography variant="h6">
-                  Current Tenants
+                  Tenants
                 </Typography>
                 <Button
                   variant="contained"
                   color="primary"
                   startIcon={<PeopleIcon />}
-                  onClick={() => navigate(`/spaces/${spaceId}/tenants/add`)}
+                  onClick={() => navigate(`/tenants/add`, { state: { defaultSpaceId: spaceId } })}
                 >
                   Add Tenant
                 </Button>
@@ -389,13 +497,14 @@ const SpaceManagement = () => {
                       <TableCell>Contact</TableCell>
                       <TableCell>Lease Period</TableCell>
                       <TableCell>Rent</TableCell>
+                      <TableCell>Status</TableCell>
                       <TableCell>Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {tenants.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} align="center">
+                        <TableCell colSpan={6} align="center">
                           No tenants found. Add your first tenant to get started.
                         </TableCell>
                       </TableRow>
@@ -416,12 +525,19 @@ const SpaceManagement = () => {
                           </TableCell>
                           <TableCell>${tenant.rent_amount?.toLocaleString() || 0}</TableCell>
                           <TableCell>
+                            <Chip
+                              label={tenant.status || 'active'}
+                              color={tenant.status === 'active' ? 'success' : 'default'}
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell>
                             <Button
                               size="small"
                               variant="outlined"
                               onClick={() => navigate(`/tenants/${tenant.tenant_id}`)}
                             >
-                              View Details
+                              Details
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -453,7 +569,7 @@ const SpaceManagement = () => {
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => navigate(`/spaces/${spaceId}/edit`)}
+                onClick={() => navigate(`/spaces/${spaceId}/edit`, { state: { spaceData: space } })}
               >
                 Edit Space Details
               </Button>
@@ -461,6 +577,77 @@ const SpaceManagement = () => {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* Status Toggle Dialog */}
+      <Dialog
+        open={statusDialogOpen}
+        onClose={() => setStatusDialogOpen(false)}
+      >
+        <DialogTitle>
+          {space.is_active ? 'Deactivate Space' : 'Activate Space'}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {space.is_active
+              ? 'Deactivating this space will hide it from searches and prevent new bookings. Current tenants will not be affected.'
+              : 'Activating this space will make it available for searches and allow new bookings.'}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStatusDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color={space.is_active ? "error" : "success"}
+            onClick={handleToggleStatus}
+          >
+            {space.is_active ? 'Deactivate' : 'Activate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Space Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Delete Space</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete "{space.title}"? This action cannot be undone and will remove all associated tenant records.
+            {tenants.filter(t => t.status === 'active').length > 0 && (
+              <Box component="span" fontWeight="bold" sx={{ display: 'block', mt: 1, color: 'error.main' }}>
+                Warning: This space has {tenants.filter(t => t.status === 'active').length} active tenant(s).
+              </Box>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDeleteSpace}
+          >
+            Delete Space
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseNotification}
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
