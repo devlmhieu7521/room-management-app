@@ -5,7 +5,7 @@ const morgan = require('morgan');
 const dotenv = require('dotenv');
 const spaceRoutes = require('./routes/space.routes');
 const bookingRoutes = require('./routes/booking.routes');
-
+const tenantRoutes = require('./routes/tenant.routes');
 // Load environment variables
 dotenv.config();
 
@@ -24,8 +24,7 @@ const authRoutes = require('./routes/auth.routes');
 // Use routes
 app.use('/api/auth', authRoutes);
 app.use('/api/spaces', spaceRoutes);
-app.use('/api/bookings', bookingRoutes);
-
+app.use('/api/tenants', tenantRoutes);
 // Basic route
 app.get('/', (req, res) => {
   res.json({ message: 'Room Management API is running' });

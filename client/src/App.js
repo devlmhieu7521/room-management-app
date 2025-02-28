@@ -11,6 +11,14 @@ import Navbar from './components/layout/Navbar';
 import SpaceForm from './components/spaces/SpaceForm';
 import MySpaces from './components/spaces/MySpaces';
 import BookingsList from './components/bookings/BookingsList';
+import SpaceDetails from './components/spaces/SpaceDetails';
+import BookingDetails from './components/bookings/BookingDetails';
+import UserProfile from './components/profile/UserProfile';
+import HostDashboard from './components/dashboard/HostDashboard';
+import TenantsList from './components/tenants/TenantsList';
+import AddTenant from './components/tenants/AddTenant';
+import SpaceManagement from './components/spaces/SpaceManagement';
+
 
 const theme = createTheme({
   palette: {
@@ -47,10 +55,27 @@ function App() {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <HostDashboard />
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/tenants"
+            element={
+              <ProtectedRoute>
+                <TenantsList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tenants/add"
+            element={
+              <ProtectedRoute>
+                <AddTenant />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route
             path="/my-spaces"
             element={
@@ -60,19 +85,10 @@ function App() {
             }
           />
           <Route
-            path="/spaces/create"
+            path="/spaces/:spaceId/manage"
             element={
               <ProtectedRoute>
-                <SpaceForm />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/" element={<Navigate to="/dashboard" />} />
-          <Route
-            path="/bookings"
-            element={
-              <ProtectedRoute>
-                <BookingsList />
+                <SpaceManagement />
               </ProtectedRoute>
             }
           />

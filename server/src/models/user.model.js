@@ -47,6 +47,35 @@ class UserModel {
       throw error;
     }
   }
+
+  static async update(userId, updateData) {
+    // Construct dynamic update query
+    const keys = Object.keys(updateData);
+    const values = Object.values(updateData);
+
+    // Don't update if no data provided
+    if (keys.length === 0) return null;
+
+    // Construct SET part of query
+    const setClauses = keys.map((key, index) => `${key} = $${index + 2}`);
+
+    // Add updated_at timestamp
+    setClauses.push('updated_at = CURRENT_TIMESTAMP');
+
+    const query = `
+      UPDATE users
+      SET ${setClauses.join(', ')}
+      WHERE user_id = $1
+      RETURNING *
+    `;
+
+    try {
+      const result = await db.query(query, [userId, ...values]);
+      return result.rows[0] || null;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = UserModel;

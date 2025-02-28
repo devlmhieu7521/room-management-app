@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -8,11 +9,13 @@ import {
   CardMedia,
   Button,
   Box,
-  CircularProgress
+  CircularProgress,
+  Alert
 } from '@mui/material';
-import axios from 'axios';
+import api from '../../utils/api';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [spaces, setSpaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,7 +24,9 @@ const Dashboard = () => {
     const fetchSpaces = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('http://localhost:4000/api/spaces');
+        // Use the api utility instead of axios directly
+        const response = await api.get('/spaces');
+        console.log('API response:', response.data); // Debug log
         setSpaces(response.data.spaces || []);
       } catch (error) {
         console.error('Error fetching spaces:', error);
@@ -45,7 +50,7 @@ const Dashboard = () => {
   if (error) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-        <Typography color="error">{error}</Typography>
+        <Alert severity="error">{error}</Alert>
       </Box>
     );
   }
@@ -57,7 +62,21 @@ const Dashboard = () => {
       </Typography>
 
       {spaces.length === 0 ? (
-        <Typography>No spaces are currently available.</Typography>
+        <Box sx={{ textAlign: 'center', py: 5 }}>
+          <Typography variant="h6" gutterBottom>
+            No spaces available yet
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 3 }}>
+            Check back later or create your own space
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => navigate('/spaces/create')}
+          >
+            Create a Space
+          </Button>
+        </Box>
       ) : (
         <Grid container spacing={4}>
           {spaces.map((space) => (
@@ -89,7 +108,13 @@ const Dashboard = () => {
                   </Box>
                 </CardContent>
                 <Box sx={{ p: 2 }}>
-                  <Button size="small" variant="contained">View Details</Button>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => navigate(`/spaces/${space.space_id}`)}
+                  >
+                    View Details
+                  </Button>
                 </Box>
               </Card>
             </Grid>

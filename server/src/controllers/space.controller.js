@@ -21,13 +21,14 @@ class SpaceController {
     }
   }
 
+  // In your space.controller.js
   static async getSpaces(req, res) {
     try {
       const filters = req.query; // Get filters from query parameters
       const spaces = await SpaceModel.findAll(filters);
 
       return res.status(200).json({
-        spaces
+        spaces // This should be an array of space objects
       });
     } catch (error) {
       console.error('Error fetching spaces:', error);
