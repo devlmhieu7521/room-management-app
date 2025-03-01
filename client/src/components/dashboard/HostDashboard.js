@@ -42,31 +42,43 @@ const HostDashboard = () => {
     const fetchHostData = async () => {
       try {
         setLoading(true);
+        console.log('Fetching host dashboard data...');
 
-        // Fetch spaces owned by the host
+        // First, get spaces list
+        let spacesList = [];
         try {
-          // Get spaces list
+          console.log('Fetching spaces...');
           const spacesResponse = await apiService.spaces.getMySpaces();
-          if (spacesResponse.data && spacesResponse.data.spaces) {
-            setSpaces(spacesResponse.data.spaces);
-          }
+          console.log (spacesResponse)
+          console.log('Spaces response:', spacesResponse.data);
 
-          // Get space metrics for dashboard
-          const metricsResponse = await apiService.spaces.getMetrics();
-          if (metricsResponse.data && metricsResponse.data.metrics) {
-            setMetrics(metricsResponse.data.metrics);
+          if (spacesResponse.data && spacesResponse.data.spaces) {
+            spacesList = spacesResponse.data.spaces;
+            setSpaces(spacesList);
           }
         } catch (error) {
-          console.error('API error:', error);
-          // If API calls fail, we'll use metrics from spaces if available
-          if (spaces.length > 0) {
-            setMetrics({
-              total_spaces: spaces.length,
-              active_spaces: spaces.filter(space => space.is_active).length,
-              total_tenants: spaces.reduce((sum, space) => sum + (space.tenant_count || 0), 0),
-              monthly_revenue: 0 // This would need additional API calls
-            });
+          console.error('Error fetching spaces:', error);
+        }
+
+        // Then get metrics
+        try {
+          console.log('Fetching metrics...');
+          const metricsResponse = await apiService.spaces.getMetrics();
+          console.log('Metrics response:', metricsResponse.data);
+
+          if (metricsResponse.data && metricsResponse.data.metrics) {
+            console.log('Setting metrics from API:', metricsResponse.data.metrics);
+            setMetrics(metricsResponse.data.metrics);
+          } else {
+            // If API response doesn't have metrics, calculate from spaces
+            console.log('Calculating metrics from spaces:', spacesList.length);
+            calculateMetricsFromSpaces(spacesList);
           }
+        } catch (error) {
+          console.error('Error fetching metrics:', error);
+          // If metrics API fails, calculate from spaces
+          console.log('Falling back to space-based metrics calculation');
+          calculateMetricsFromSpaces(spacesList);
         }
       } catch (error) {
         console.error('Error fetching host data:', error);
@@ -78,6 +90,24 @@ const HostDashboard = () => {
 
     fetchHostData();
   }, []);
+
+  // Helper function to calculate metrics from spaces
+  const calculateMetricsFromSpaces = (spaces) => {
+    console.log('Calculating metrics from', spaces.length, 'spaces');
+
+    const calculatedMetrics = {
+      total_spaces: spaces.length,
+      active_spaces: spaces.filter(space => space.is_active).length,
+      total_tenants: spaces.reduce((sum, space) => sum + (space.tenant_count || 0), 0),
+      monthly_revenue: spaces.reduce((sum, space) => {
+        // Calculate revenue based on active tenants if available
+        return sum + (space.monthly_revenue || 0);
+      }, 0)
+    };
+
+    console.log('Calculated metrics:', calculatedMetrics);
+    setMetrics(calculatedMetrics);
+  };
 
   if (loading) {
     return (

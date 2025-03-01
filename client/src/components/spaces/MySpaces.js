@@ -66,20 +66,24 @@ const MySpaces = () => {
     const fetchMySpaces = async () => {
       try {
         setLoading(true);
-
-        // Use our new API service to fetch spaces
         const response = await apiService.spaces.getMySpaces();
 
         if (response.data && response.data.spaces) {
+          // Debug log
+          console.log('Spaces received from API:', response.data.spaces);
+          console.log('Tenant counts:', response.data.spaces.map(s => ({
+            id: s.space_id,
+            title: s.title,
+            tenant_count: s.tenant_count
+          })));
+
           setSpaces(response.data.spaces);
         } else {
-          // If no data returned, set an empty array
           setSpaces([]);
         }
       } catch (error) {
         console.error('Error fetching my spaces:', error);
         setError('Failed to load spaces. Please try again later.');
-        // Don't set mock spaces here since we're focusing on real API integration
         setSpaces([]);
       } finally {
         setLoading(false);
@@ -254,7 +258,7 @@ const MySpaces = () => {
                     </Typography>
                     <Box sx={{ mt: 2 }}>
                       <Typography variant="body2">
-                        <strong>Tenants:</strong> {space.tenant_count || 0}
+                        <strong>Tenants:</strong> {space.tenant_count !== undefined ? space.tenant_count : 0}
                       </Typography>
                     </Box>
                   </CardContent>

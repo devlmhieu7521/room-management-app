@@ -74,10 +74,14 @@ class SpaceModel {
   }
 
   static async findByHostId(hostId) {
-    // Enhanced query with tenant count
+    // Modified query to ensure tenant_count is always returned
     const query = `
-      SELECT s.*,
-             (SELECT COUNT(*) FROM tenants WHERE space_id = s.space_id AND status = 'active') AS tenant_count
+      SELECT
+        s.*,
+        COALESCE(
+          (SELECT COUNT(*) FROM tenants WHERE space_id = s.space_id AND status = 'active'),
+          0
+        ) AS tenant_count
       FROM spaces s
       WHERE s.host_id = $1
       ORDER BY s.created_at DESC
@@ -85,8 +89,16 @@ class SpaceModel {
 
     try {
       const result = await db.query(query, [hostId]);
+
+      // Debug the raw database result
+      if (result.rows.length > 0) {
+        console.log('Database result first row:', JSON.stringify(result.rows[0], null, 2));
+        console.log('tenant_count in first row:', result.rows[0].tenant_count);
+      }
+
       return result.rows;
     } catch (error) {
+      console.error('Error in findByHostId:', error);
       throw error;
     }
   }
@@ -180,7 +192,7 @@ class SpaceModel {
     }
   }
 
-  // Get space metrics - useful for dashboard
+  // In SpaceModel.getMetrics
   static async getMetrics(hostId) {
     const query = `
       SELECT
@@ -194,8 +206,11 @@ class SpaceModel {
       WHERE host_id = $1
     `;
 
+    console.log('Running metrics query for host ID:', hostId);
+
     try {
       const result = await db.query(query, [hostId]);
+      console.log('Metrics query result:', result.rows[0]);
       return result.rows[0] || {
         total_spaces: 0,
         active_spaces: 0,
@@ -203,6 +218,7 @@ class SpaceModel {
         monthly_revenue: 0
       };
     } catch (error) {
+      console.error('Metrics query error:', error);
       throw error;
     }
   }

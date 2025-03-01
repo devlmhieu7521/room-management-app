@@ -4,20 +4,18 @@ const authMiddleware = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
-// Public routes
-router.get('/', SpaceController.getSpaces);
-router.get('/:spaceId', SpaceController.getSpaceById);
-
 // Protected routes - require authentication
 router.use(authMiddleware);
+
+// Host-specific routes - ORDER MATTERS HERE
+router.get('/host/metrics', SpaceController.getSpaceMetrics);
+router.get('/host/my-spaces', SpaceController.getHostSpaces);
 
 // Space CRUD operations
 router.post('/', SpaceController.createSpace);
 router.put('/:spaceId', SpaceController.updateSpace);
 router.delete('/:spaceId', SpaceController.deleteSpace);
 
-// Host-specific routes
-router.get('/host/my-spaces', SpaceController.getHostSpaces);
-router.get('/host/metrics', SpaceController.getSpaceMetrics);
-
+// This route should come AFTER the /host/* routes
+router.get('/:spaceId', SpaceController.getSpaceById);
 module.exports = router;

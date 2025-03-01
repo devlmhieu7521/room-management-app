@@ -89,20 +89,31 @@ class SpaceController {
   // Get all spaces for the current host
   static async getHostSpaces(req, res) {
     try {
-      const hostId = req.user.id; // From JWT token
+      const hostId = req.user.id;
       const spaces = await SpaceModel.findByHostId(hostId);
+
+      // Debug the spaces returned from the model
+      console.log('Raw spaces data from model:', JSON.stringify(spaces[0], null, 2));
+
+      // Make sure the tenant_count is explicitly included in each space
+      const spacesWithTenantCount = spaces.map(space => {
+        // If tenant_count is missing, set it to 0
+        return {
+          ...space,
+          tenant_count: space.tenant_count !== undefined ? space.tenant_count : 0
+        };
+      });
 
       return res.status(200).json({
         success: true,
-        count: spaces.length,
-        spaces
+        count: spacesWithTenantCount.length,
+        spaces: spacesWithTenantCount
       });
     } catch (error) {
       console.error('Error fetching host spaces:', error);
       return res.status(500).json({
         success: false,
-        message: 'Server error while fetching host spaces',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: 'Server error while fetching host spaces'
       });
     }
   }
@@ -196,7 +207,10 @@ class SpaceController {
   static async getSpaceMetrics(req, res) {
     try {
       const hostId = req.user.id; // From JWT token
+      console.log('Fetching metrics for host ID:', hostId);
+
       const metrics = await SpaceModel.getMetrics(hostId);
+      console.log('Metrics found:', metrics);
 
       return res.status(200).json({
         success: true,
