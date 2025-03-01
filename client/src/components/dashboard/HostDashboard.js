@@ -24,18 +24,18 @@ import {
   People as PeopleIcon,
   AttachMoney as MoneyIcon
 } from '@mui/icons-material';
-import api from '../../utils/api';
+import apiService from '../../utils/api';
 
 const HostDashboard = () => {
   const navigate = useNavigate();
   const [spaces, setSpaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [stats, setStats] = useState({
-    totalSpaces: 0,
-    occupiedSpaces: 0,
-    totalTenants: 0,
-    monthlyRevenue: 0
+  const [metrics, setMetrics] = useState({
+    total_spaces: 0,
+    active_spaces: 0,
+    total_tenants: 0,
+    monthly_revenue: 0
   });
 
   useEffect(() => {
@@ -44,18 +44,30 @@ const HostDashboard = () => {
         setLoading(true);
 
         // Fetch spaces owned by the host
-        const spacesResponse = await api.get('/spaces/host/my-spaces');
-        const hostSpaces = spacesResponse.data.spaces || [];
-        setSpaces(hostSpaces);
+        try {
+          // Get spaces list
+          const spacesResponse = await apiService.spaces.getMySpaces();
+          if (spacesResponse.data && spacesResponse.data.spaces) {
+            setSpaces(spacesResponse.data.spaces);
+          }
 
-        // Calculate basic stats
-        setStats({
-          totalSpaces: hostSpaces.length,
-          occupiedSpaces: hostSpaces.filter(space => space.is_occupied).length || 0,
-          totalTenants: 0, // You'll need to implement this endpoint
-          monthlyRevenue: 0 // You'll need to implement this endpoint
-        });
-
+          // Get space metrics for dashboard
+          const metricsResponse = await apiService.spaces.getMetrics();
+          if (metricsResponse.data && metricsResponse.data.metrics) {
+            setMetrics(metricsResponse.data.metrics);
+          }
+        } catch (error) {
+          console.error('API error:', error);
+          // If API calls fail, we'll use metrics from spaces if available
+          if (spaces.length > 0) {
+            setMetrics({
+              total_spaces: spaces.length,
+              active_spaces: spaces.filter(space => space.is_active).length,
+              total_tenants: spaces.reduce((sum, space) => sum + (space.tenant_count || 0), 0),
+              monthly_revenue: 0 // This would need additional API calls
+            });
+          }
+        }
       } catch (error) {
         console.error('Error fetching host data:', error);
         setError('Failed to load your host dashboard. Please try again.');
@@ -110,10 +122,10 @@ const HostDashboard = () => {
               Total Spaces
             </Typography>
             <Typography component="p" variant="h4">
-              {stats.totalSpaces}
+              {metrics.total_spaces}
             </Typography>
             <Typography color="text.secondary" sx={{ flex: 1 }}>
-              {stats.occupiedSpaces} occupied
+              {metrics.active_spaces} active
             </Typography>
             <div>
               <Button
@@ -133,7 +145,7 @@ const HostDashboard = () => {
               Tenants
             </Typography>
             <Typography component="p" variant="h4">
-              {stats.totalTenants}
+              {metrics.total_tenants}
             </Typography>
             <Typography color="text.secondary" sx={{ flex: 1 }}>
               across all properties
@@ -156,7 +168,7 @@ const HostDashboard = () => {
               Monthly Revenue
             </Typography>
             <Typography component="p" variant="h4">
-              ${stats.monthlyRevenue.toLocaleString()}
+              ${metrics.monthly_revenue?.toLocaleString() || 0}
             </Typography>
             <Typography color="text.secondary" sx={{ flex: 1 }}>
               for the current month
@@ -245,7 +257,7 @@ const HostDashboard = () => {
                         </Typography>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
                           <Typography variant="body2">
-                            <strong>Status:</strong> {space.is_occupied ? 'Occupied' : 'Available'}
+                            <strong>Status:</strong> {space.is_active ? 'Active' : 'Inactive'}
                           </Typography>
                           <Typography variant="body2">
                             <strong>Capacity:</strong> {space.capacity}

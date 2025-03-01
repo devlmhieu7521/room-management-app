@@ -45,7 +45,7 @@ import {
   ToggleOn as ToggleOnIcon,
   ToggleOff as ToggleOffIcon
 } from '@mui/icons-material';
-import api from '../../utils/api';
+import apiService from '../../utils/api';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -85,85 +85,54 @@ const SpaceManagement = () => {
     severity: 'success'
   });
 
-  // Get space data - try to get it from location state first, then fetch from API
+  // Fetch space and tenant data
   useEffect(() => {
-    const fetchSpaceData = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
 
         // If we have space data in the location state, use it
         if (location.state && location.state.spaceData) {
-          console.log("Using space data from location state:", location.state.spaceData);
           setSpace(location.state.spaceData);
-
-          // For tenants, still use mock data for now
-          setMockTenants();
         } else {
-          // Otherwise try to fetch from API
+          // Otherwise fetch from API
           try {
-            const response = await api.get(`/spaces/${spaceId}`);
+            const response = await apiService.spaces.getById(spaceId);
             if (response.data && response.data.space) {
               setSpace(response.data.space);
             } else {
-              // If API doesn't return data, use mock data
-              setMockData();
+              setError('Could not load space details');
             }
           } catch (error) {
             console.error('Error fetching space details:', error);
-            setMockData();
+            setError('Failed to load space details. Please try again later.');
           }
         }
+
+        // Fetch tenants for this space
+        try {
+          const tenantResponse = await apiService.tenants.getBySpace(spaceId);
+          if (tenantResponse.data && tenantResponse.data.tenants) {
+            setTenants(tenantResponse.data.tenants);
+          } else {
+            // If no tenants found, set empty array
+            setTenants([]);
+          }
+        } catch (error) {
+          console.error('Error fetching tenants:', error);
+          // Set empty array if there's an error
+          setTenants([]);
+        }
       } catch (error) {
-        console.error('Error setting up space data:', error);
-        setError('Failed to load space details. Please try again later.');
-        setMockData();
+        console.error('Error loading data:', error);
+        setError('Failed to load data. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSpaceData();
+    fetchData();
   }, [spaceId, location.state]);
-
-  const setMockData = () => {
-    // Mock space data for testing
-    console.log("Setting mock space data for ID:", spaceId);
-
-    setSpace({
-      space_id: spaceId,
-      title: 'Modern Downtown Apartment',
-      description: 'Stylish apartment in the heart of downtown with great amenities.',
-      space_type: 'Apartment',
-      capacity: 2,
-      street_address: '123 Main Street',
-      city: 'San Francisco',
-      state: 'CA',
-      zip_code: '94105',
-      country: 'USA',
-      is_active: true,
-      created_at: '2024-01-15T00:00:00Z'
-    });
-
-    // Set mock tenants data too
-    setMockTenants();
-  };
-
-  const setMockTenants = () => {
-    // Mock tenants data
-    setTenants([
-      {
-        tenant_id: '1',
-        first_name: 'John',
-        last_name: 'Doe',
-        email: 'john.doe@example.com',
-        phone_number: '(555) 123-4567',
-        start_date: '2024-01-15',
-        end_date: '2025-01-14',
-        rent_amount: 2000,
-        status: 'active'
-      }
-    ]);
-  };
 
   const handleChange = (event, newValue) => {
     setValue(newValue);
@@ -173,27 +142,31 @@ const SpaceManagement = () => {
     try {
       const newStatus = !space.is_active;
 
-      // In a real app, you'd call the API here
-      // await api.put(`/spaces/${spaceId}`, { is_active: newStatus });
+      // Update space status via API
+      const response = await apiService.spaces.update(spaceId, { is_active: newStatus });
 
-      // But for now, just update the local state
-      setSpace({
-        ...space,
-        is_active: newStatus
-      });
+      if (response.data && response.data.space) {
+        // Update local state
+        setSpace({
+          ...space,
+          is_active: newStatus
+        });
 
-      setNotification({
-        open: true,
-        message: `Space ${space.is_active ? 'deactivated' : 'activated'} successfully`,
-        severity: 'success'
-      });
+        setNotification({
+          open: true,
+          message: `Space ${newStatus ? 'activated' : 'deactivated'} successfully`,
+          severity: 'success'
+        });
+      } else {
+        throw new Error('Failed to update space status');
+      }
 
       setStatusDialogOpen(false);
     } catch (error) {
       console.error('Error updating space status:', error);
       setNotification({
         open: true,
-        message: 'Failed to update space status',
+        message: error.message || 'Failed to update space status',
         severity: 'error'
       });
     }
@@ -201,8 +174,8 @@ const SpaceManagement = () => {
 
   const handleDeleteSpace = async () => {
     try {
-      // In a real app, you'd call the API here
-      // await api.delete(`/spaces/${spaceId}`);
+      // Delete space via API
+      await apiService.spaces.delete(spaceId);
 
       setNotification({
         open: true,
@@ -218,7 +191,7 @@ const SpaceManagement = () => {
       console.error('Error deleting space:', error);
       setNotification({
         open: true,
-        message: 'Failed to delete space',
+        message: error.message || 'Failed to delete space',
         severity: 'error'
       });
     } finally {

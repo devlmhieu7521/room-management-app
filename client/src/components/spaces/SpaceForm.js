@@ -13,7 +13,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import api from '../../utils/api';
+import apiService from '../../utils/api';
 
 const spaceTypes = [
   'Meeting Room',
@@ -52,7 +52,7 @@ const SpaceForm = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // If in edit mode, try to load the space data
+    // If in edit mode, load the space data
     if (isEditMode) {
       const fetchSpaceDetails = async () => {
         try {
@@ -60,27 +60,19 @@ const SpaceForm = () => {
 
           // If we have space data in location state, use it
           if (location.state && location.state.spaceData) {
-            console.log("Using space data from location state:", location.state.spaceData);
             setFormData(location.state.spaceData);
           } else {
-            // Otherwise try to fetch from API
-            try {
-              const response = await api.get(`/spaces/${spaceId}`);
-              if (response.data && response.data.space) {
-                setFormData(response.data.space);
-              } else {
-                // If API doesn't return data, use mock data
-                setMockData();
-              }
-            } catch (error) {
-              console.error('Error fetching space details:', error);
-              setMockData();
+            // Otherwise fetch from API
+            const response = await apiService.spaces.getById(spaceId);
+            if (response.data && response.data.space) {
+              setFormData(response.data.space);
+            } else {
+              setError('Could not load space details');
             }
           }
         } catch (error) {
-          console.error('Error setting up space data:', error);
+          console.error('Error fetching space details:', error);
           setError('Failed to load space details. Please try again later.');
-          setMockData();
         } finally {
           setInitialLoading(false);
         }
@@ -89,22 +81,6 @@ const SpaceForm = () => {
       fetchSpaceDetails();
     }
   }, [spaceId, isEditMode, location.state]);
-
-  // For development - set mock data
-  const setMockData = () => {
-    setFormData({
-      title: 'Modern Downtown Apartment',
-      description: 'Stylish apartment in the heart of downtown with great amenities.',
-      space_type: 'Apartment',
-      capacity: 2,
-      street_address: '123 Main Street',
-      city: 'San Francisco',
-      state: 'CA',
-      zip_code: '94105',
-      country: 'USA',
-      is_active: true
-    });
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -125,39 +101,44 @@ const SpaceForm = () => {
         throw new Error('Please fill all required fields');
       }
 
+      // Process capacity value to ensure it's a number
+      const processedData = {
+        ...formData,
+        capacity: parseInt(formData.capacity, 10)
+      };
+
+      // Process boolean fields
+      if (isEditMode && (processedData.is_active === 'true' || processedData.is_active === 'false')) {
+        processedData.is_active = processedData.is_active === 'true';
+      }
+
+      let response;
+
       // If editing, update the space; otherwise create new
       if (isEditMode) {
-        // In a real app, you'd call the API here
-        // await api.put(`/spaces/${spaceId}`, formData);
+        response = await apiService.spaces.update(spaceId, processedData);
+      } else {
+        response = await apiService.spaces.create(processedData);
+      }
 
+      // Check if the API call was successful
+      if (response.data && (response.data.space || response.data.success)) {
         setSuccess(true);
 
         // Redirect after success
         setTimeout(() => {
-          navigate(`/spaces/${spaceId}/manage`, {
-            state: {
-              spaceData: formData
-            }
-          });
+          if (isEditMode) {
+            navigate(`/spaces/${spaceId}/manage`, {
+              state: { spaceData: response.data.space }
+            });
+          } else {
+            navigate('/my-spaces', {
+              state: { spaceAdded: true }
+            });
+          }
         }, 1500);
       } else {
-        // In a real app, you'd call the API here
-        // const response = await api.post('/spaces', formData);
-        // const newSpaceId = response.data.space.space_id;
-
-        // For development, generate a fake ID
-        const newSpaceId = Math.floor(Math.random() * 10000).toString();
-
-        setSuccess(true);
-
-        // Redirect after success
-        setTimeout(() => {
-          navigate('/my-spaces', {
-            state: {
-              spaceAdded: true
-            }
-          });
-        }, 1500);
+        throw new Error('API response missing expected data');
       }
     } catch (error) {
       console.error('Error with space:', error);
@@ -196,8 +177,9 @@ const SpaceForm = () => {
                 fullWidth
                 label="Title"
                 name="title"
-                value={formData.title}
+                value={formData.title || ''}
                 onChange={handleChange}
+                helperText="A descriptive name for your space"
               />
             </Grid>
 
@@ -208,8 +190,9 @@ const SpaceForm = () => {
                 name="description"
                 multiline
                 rows={4}
-                value={formData.description}
+                value={formData.description || ''}
                 onChange={handleChange}
+                helperText="Detailed description of your space"
               />
             </Grid>
 
@@ -220,8 +203,9 @@ const SpaceForm = () => {
                 select
                 label="Space Type"
                 name="space_type"
-                value={formData.space_type}
+                value={formData.space_type || ''}
                 onChange={handleChange}
+                helperText="Select the type of space"
               >
                 {spaceTypes.map((option) => (
                   <MenuItem key={option} value={option}>
@@ -238,9 +222,10 @@ const SpaceForm = () => {
                 label="Capacity"
                 name="capacity"
                 type="number"
-                value={formData.capacity}
+                value={formData.capacity || ''}
                 onChange={handleChange}
                 inputProps={{ min: 1 }}
+                helperText="Maximum number of people"
               />
             </Grid>
 
@@ -250,8 +235,9 @@ const SpaceForm = () => {
                 fullWidth
                 label="Street Address"
                 name="street_address"
-                value={formData.street_address}
+                value={formData.street_address || ''}
                 onChange={handleChange}
+                helperText="Full street address of the space"
               />
             </Grid>
 
@@ -261,7 +247,7 @@ const SpaceForm = () => {
                 fullWidth
                 label="City"
                 name="city"
-                value={formData.city}
+                value={formData.city || ''}
                 onChange={handleChange}
               />
             </Grid>
@@ -272,7 +258,7 @@ const SpaceForm = () => {
                 fullWidth
                 label="State/Province"
                 name="state"
-                value={formData.state}
+                value={formData.state || ''}
                 onChange={handleChange}
               />
             </Grid>
@@ -283,7 +269,7 @@ const SpaceForm = () => {
                 fullWidth
                 label="Zip/Postal Code"
                 name="zip_code"
-                value={formData.zip_code}
+                value={formData.zip_code || ''}
                 onChange={handleChange}
               />
             </Grid>
@@ -294,7 +280,7 @@ const SpaceForm = () => {
                 fullWidth
                 label="Country"
                 name="country"
-                value={formData.country}
+                value={formData.country || ''}
                 onChange={handleChange}
               />
             </Grid>
@@ -308,6 +294,7 @@ const SpaceForm = () => {
                   name="is_active"
                   value={formData.is_active === true || formData.is_active === "true" ? "true" : "false"}
                   onChange={handleChange}
+                  helperText="Active spaces are visible and available for booking"
                 >
                   <MenuItem value="true">Active</MenuItem>
                   <MenuItem value="false">Inactive</MenuItem>

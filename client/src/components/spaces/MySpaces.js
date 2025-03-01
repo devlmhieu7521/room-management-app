@@ -32,7 +32,7 @@ import {
   Delete as DeleteIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import api from '../../utils/api';
+import apiService from '../../utils/api';
 
 const MySpaces = () => {
   const navigate = useNavigate();
@@ -67,23 +67,20 @@ const MySpaces = () => {
       try {
         setLoading(true);
 
-        // Try to get spaces from API
-        try {
-          const response = await api.get('/spaces/host/my-spaces');
-          if (response.data && response.data.spaces) {
-            setSpaces(response.data.spaces);
-          } else {
-            // If no spaces are returned, set mock data
-            setMockSpaces();
-          }
-        } catch (error) {
-          console.error('API error:', error);
-          setMockSpaces();
+        // Use our new API service to fetch spaces
+        const response = await apiService.spaces.getMySpaces();
+
+        if (response.data && response.data.spaces) {
+          setSpaces(response.data.spaces);
+        } else {
+          // If no data returned, set an empty array
+          setSpaces([]);
         }
       } catch (error) {
         console.error('Error fetching my spaces:', error);
         setError('Failed to load spaces. Please try again later.');
-        setMockSpaces();
+        // Don't set mock spaces here since we're focusing on real API integration
+        setSpaces([]);
       } finally {
         setLoading(false);
       }
@@ -91,57 +88,6 @@ const MySpaces = () => {
 
     fetchMySpaces();
   }, []);
-
-  const setMockSpaces = () => {
-    // These are sample spaces for development/demo purposes
-    setSpaces([
-      {
-        space_id: '1',
-        title: 'Modern Downtown Apartment',
-        description: 'Stylish apartment in the heart of downtown with great amenities.',
-        space_type: 'Apartment',
-        capacity: 2,
-        city: 'San Francisco',
-        state: 'CA',
-        street_address: '123 Main Street',
-        zip_code: '94105',
-        country: 'USA',
-        is_active: true,
-        tenant_count: 1,
-        created_at: '2024-01-15T00:00:00Z'
-      },
-      {
-        space_id: '2',
-        title: 'Cozy Studio Near Park',
-        description: 'Comfortable studio apartment with park views and nearby dining.',
-        space_type: 'Studio',
-        capacity: 1,
-        city: 'Portland',
-        state: 'OR',
-        street_address: '456 Park Avenue',
-        zip_code: '97201',
-        country: 'USA',
-        is_active: true,
-        tenant_count: 0,
-        created_at: '2024-02-01T00:00:00Z'
-      },
-      {
-        space_id: '3',
-        title: 'Office Suite with Conference Room',
-        description: 'Professional office space with a dedicated conference room and reception area.',
-        space_type: 'Office Space',
-        capacity: 8,
-        city: 'Seattle',
-        state: 'WA',
-        street_address: '789 Business Blvd',
-        zip_code: '98101',
-        country: 'USA',
-        is_active: true,
-        tenant_count: 2,
-        created_at: '2024-01-20T00:00:00Z'
-      }
-    ]);
-  };
 
   const handleSearch = (event) => {
     setSearchQuery(event.target.value);
@@ -161,10 +107,10 @@ const MySpaces = () => {
     if (!spaceToDelete) return;
 
     try {
-      // In a real app, you'd call the API to delete the space
-      // await api.delete(`/spaces/${spaceToDelete.space_id}`);
+      // Use our API service to delete the space
+      await apiService.spaces.delete(spaceToDelete.space_id);
 
-      // Instead, just update the state
+      // Update local state
       setSpaces(spaces.filter(space => space.space_id !== spaceToDelete.space_id));
 
       setNotification({
@@ -176,7 +122,7 @@ const MySpaces = () => {
       console.error('Error deleting space:', error);
       setNotification({
         open: true,
-        message: 'Failed to delete space. Please try again.',
+        message: error.message || 'Failed to delete space. Please try again.',
         severity: 'error'
       });
     } finally {

@@ -9,9 +9,15 @@ router.get('/', SpaceController.getSpaces);
 router.get('/:spaceId', SpaceController.getSpaceById);
 
 // Protected routes - require authentication
-router.post('/', authMiddleware, SpaceController.createSpace);
-router.get('/host/my-spaces', authMiddleware, SpaceController.getHostSpaces);
-router.put('/:spaceId', authMiddleware, SpaceController.updateSpace);
-router.delete('/:spaceId', authMiddleware, SpaceController.deleteSpace);
+router.use(authMiddleware);
+
+// Space CRUD operations
+router.post('/', SpaceController.createSpace);
+router.put('/:spaceId', SpaceController.updateSpace);
+router.delete('/:spaceId', SpaceController.deleteSpace);
+
+// Host-specific routes
+router.get('/host/my-spaces', SpaceController.getHostSpaces);
+router.get('/host/metrics', SpaceController.getSpaceMetrics);
 
 module.exports = router;
