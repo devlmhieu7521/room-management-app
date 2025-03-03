@@ -73,15 +73,6 @@ const apiService = {
     getMetrics: () => api.get('/spaces/host/metrics'),
   },
 
-  // Booking related
-  bookings: {
-    getAll: (params) => api.get('/bookings', { params }),
-    getById: (id) => api.get(`/bookings/${id}`),
-    getHostBookings: () => api.get('/bookings/host'),
-    create: (bookingData) => api.post('/bookings', bookingData),
-    updateStatus: (id, status) => api.put(`/bookings/${id}/status`, { booking_status: status }),
-  },
-
   // Tenant related
   tenants: {
     getAll: () => api.get('/tenants'),

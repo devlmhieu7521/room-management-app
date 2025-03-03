@@ -28,13 +28,6 @@ const SpaceDetails = () => {
   const [space, setSpace] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
-  const [bookingDates, setBookingDates] = useState({
-    startDate: null,
-    endDate: null
-  });
-  const [bookingError, setBookingError] = useState('');
-  const [bookingLoading, setBookingLoading] = useState(false);
 
   useEffect(() => {
     const fetchSpaceDetails = async () => {
@@ -52,51 +45,6 @@ const SpaceDetails = () => {
 
     fetchSpaceDetails();
   }, [spaceId]);
-
-  const handleBookingOpen = () => {
-    setBookingDialogOpen(true);
-  };
-
-  const handleBookingClose = () => {
-    setBookingDialogOpen(false);
-    setBookingError('');
-  };
-
-  const handleBookingSubmit = async () => {
-    try {
-      setBookingError('');
-      setBookingLoading(true);
-
-      // Validate dates
-      if (!bookingDates.startDate || !bookingDates.endDate) {
-        setBookingError('Please select both start and end dates');
-        setBookingLoading(false);
-        return;
-      }
-
-      if (bookingDates.startDate >= bookingDates.endDate) {
-        setBookingError('End date must be after start date');
-        setBookingLoading(false);
-        return;
-      }
-
-      // Submit booking request
-      await api.post('/bookings', {
-        space_id: spaceId,
-        start_date: bookingDates.startDate.toISOString().split('T')[0],
-        end_date: bookingDates.endDate.toISOString().split('T')[0]
-      });
-
-      // Close dialog and redirect to bookings page
-      handleBookingClose();
-      navigate('/bookings');
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      setBookingError(error.response?.data?.message || 'Failed to create booking');
-    } finally {
-      setBookingLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -169,64 +117,9 @@ const SpaceDetails = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               {space.country}
             </Typography>
-
-            <Button
-              variant="contained"
-              color="primary"
-              size="large"
-              fullWidth
-              onClick={handleBookingOpen}
-            >
-              Book This Space
-            </Button>
           </Grid>
         </Grid>
       </Paper>
-
-      {/* Booking Dialog */}
-      <Dialog open={bookingDialogOpen} onClose={handleBookingClose} maxWidth="sm" fullWidth>
-        <DialogTitle>Book This Space</DialogTitle>
-        <DialogContent>
-          {bookingError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {bookingError}
-            </Alert>
-          )}
-
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <Grid container spacing={3} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={6}>
-                <DatePicker
-                  label="Start Date"
-                  value={bookingDates.startDate}
-                  onChange={(date) => setBookingDates({ ...bookingDates, startDate: date })}
-                  minDate={new Date()}
-                  slotProps={{ textField: { fullWidth: true, margin: 'normal' } }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <DatePicker
-                  label="End Date"
-                  value={bookingDates.endDate}
-                  onChange={(date) => setBookingDates({ ...bookingDates, endDate: date })}
-                  minDate={bookingDates.startDate || new Date()}
-                  slotProps={{ textField: { fullWidth: true, margin: 'normal' } }}
-                />
-              </Grid>
-            </Grid>
-          </LocalizationProvider>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleBookingClose}>Cancel</Button>
-          <Button
-            onClick={handleBookingSubmit}
-            variant="contained"
-            disabled={bookingLoading}
-          >
-            {bookingLoading ? 'Booking...' : 'Book Now'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Container>
   );
 };

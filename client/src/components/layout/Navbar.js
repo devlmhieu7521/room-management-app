@@ -74,7 +74,6 @@ const Navbar = () => {
     { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
     { path: '/my-spaces', label: 'My Spaces', icon: <HomeIcon /> },
     { path: '/tenant-management', label: 'Tenant Management', icon: <PeopleIcon /> },
-    { path: '/bookings', label: 'Bookings', icon: <EventNoteIcon /> },
   ];
 
   return (

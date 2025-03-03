@@ -559,13 +559,6 @@ const SpaceManagement = () => {
         <DialogTitle>
           {space.is_active ? 'Deactivate Space' : 'Activate Space'}
         </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {space.is_active
-              ? 'Deactivating this space will hide it from searches and prevent new bookings. Current tenants will not be affected.'
-              : 'Activating this space will make it available for searches and allow new bookings.'}
-          </DialogContentText>
-        </DialogContent>
         <DialogActions>
           <Button onClick={() => setStatusDialogOpen(false)}>Cancel</Button>
           <Button

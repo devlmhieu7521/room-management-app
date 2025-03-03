@@ -48,15 +48,3 @@ CREATE TABLE availability (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Bookings Table
-CREATE TABLE bookings (
-    booking_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    space_id UUID NOT NULL REFERENCES spaces(space_id) ON DELETE RESTRICT,
-    tenant_id UUID NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    booking_status VARCHAR(50) NOT NULL DEFAULT 'pending',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CHECK (end_date > start_date)
-);

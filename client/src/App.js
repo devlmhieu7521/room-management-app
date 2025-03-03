@@ -12,8 +12,6 @@ import Dashboard from './components/dashboard/Dashboard';
 import Navbar from './components/layout/Navbar';
 import SpaceForm from './components/spaces/SpaceForm';
 import MySpaces from './components/spaces/MySpaces';
-import BookingsList from './components/bookings/BookingsList';
-import BookingDetails from './components/bookings/BookingDetails';
 import SpaceDetails from './components/spaces/SpaceDetails';
 import UserProfile from './components/profile/UserProfile';
 import HostDashboard from './components/dashboard/HostDashboard';
@@ -105,24 +103,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <SpaceForm />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Booking Routes */}
-            <Route
-              path="/bookings"
-              element={
-                <ProtectedRoute>
-                  <BookingsList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/bookings/:bookingId"
-              element={
-                <ProtectedRoute>
-                  <BookingDetails />
                 </ProtectedRoute>
               }
             />

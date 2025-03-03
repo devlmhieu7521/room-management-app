@@ -4,7 +4,6 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
 const spaceRoutes = require('./routes/space.routes');
-const bookingRoutes = require('./routes/booking.routes');
 const tenantRoutes = require('./routes/tenant.routes');
 // Load environment variables
 dotenv.config();
