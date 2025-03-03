@@ -83,19 +83,12 @@ class SpaceModel {
           0
         ) AS tenant_count
       FROM spaces s
-      WHERE s.host_id = $1
+      WHERE s.host_id = $1 AND s.is_deleted = FALSE
       ORDER BY s.created_at DESC
     `;
 
     try {
       const result = await db.query(query, [hostId]);
-
-      // Debug the raw database result
-      if (result.rows.length > 0) {
-        console.log('Database result first row:', JSON.stringify(result.rows[0], null, 2));
-        console.log('tenant_count in first row:', result.rows[0].tenant_count);
-      }
-
       return result.rows;
     } catch (error) {
       console.error('Error in findByHostId:', error);
@@ -106,11 +99,10 @@ class SpaceModel {
   static async findAll(filters = {}) {
     // Start building the query
     let query = `
-      SELECT s.*,
-             (SELECT COUNT(*) FROM tenants WHERE space_id = s.space_id AND status = 'active') AS tenant_count
-      FROM spaces s
-      WHERE s.is_active = TRUE
-    `;
+    SELECT s.*,
+           (SELECT COUNT(*) FROM tenants WHERE space_id = s.space_id AND status = 'active') AS tenant_count
+    FROM spaces s
+    WHERE s.is_active = TRUE AND s.is_deleted = FALSE`;
 
     const values = [];
 
@@ -176,10 +168,13 @@ class SpaceModel {
   }
 
   static async delete(spaceId) {
-    // Using soft delete by setting is_active = FALSE
+    // Soft delete implementation
     const query = `
       UPDATE spaces
-      SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP
+      SET
+        is_deleted = TRUE,
+        is_active = FALSE,
+        updated_at = CURRENT_TIMESTAMP
       WHERE space_id = $1
       RETURNING *
     `;
@@ -188,11 +183,10 @@ class SpaceModel {
       const result = await db.query(query, [spaceId]);
       return result.rows[0] || null;
     } catch (error) {
+      console.error('Error soft deleting space:', error);
       throw error;
     }
   }
-
-  // In SpaceModel.getMetrics
   static async getMetrics(hostId) {
     const query = `
       SELECT

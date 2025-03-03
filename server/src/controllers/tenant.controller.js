@@ -58,7 +58,7 @@ class TenantController {
 
   static async getTenants(req, res) {
     try {
-      // Get tenants for spaces owned by this host
+      // Get non-deleted tenants for spaces owned by this host
       const tenants = await TenantModel.findByHostId(req.user.id);
 
       return res.status(200).json({
@@ -133,12 +133,14 @@ class TenantController {
         });
       }
 
+      // Fetch only non-deleted tenants for the space
       const tenants = await TenantModel.findBySpaceId(spaceId);
+      const nonDeletedTenants = tenants.filter(tenant => !tenant.is_deleted);
 
       return res.status(200).json({
         success: true,
-        count: tenants.length,
-        tenants
+        count: nonDeletedTenants.length,
+        tenants: nonDeletedTenants
       });
     } catch (error) {
       console.error('Error fetching space tenants:', error);

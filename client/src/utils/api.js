@@ -66,22 +66,40 @@ const apiService = {
   spaces: {
     getAll: (params) => api.get('/spaces', { params }),
     getById: (id) => api.get(`/spaces/${id}`),
-    getMySpaces: () => api.get('/spaces/host/my-spaces'),
+    getMySpaces: () => {
+      return api.get('/spaces/host/my-spaces', {
+        params: {
+          include_deleted: false // Optional parameter to control deletion filtering
+        }
+      });
+    },
     create: (spaceData) => api.post('/spaces', spaceData),
     update: (id, spaceData) => api.put(`/spaces/${id}`, spaceData),
-    delete: (id) => api.delete(`/spaces/${id}`),
+    delete: (id) => {
+      return api.delete(`/spaces/${id}`, {
+        data: {
+          soft_delete: true // Explicitly indicate soft delete
+        }
+      });
+    },
     getMetrics: () => api.get('/spaces/host/metrics'),
   },
 
   // Tenant related
   tenants: {
-    getAll: () => api.get('/tenants'),
+    getAll: () => api.get('/tenants?exclude_deleted=true'),
     getById: (id) => api.get(`/tenants/${id}`),
-    getBySpace: (spaceId) => api.get(`/tenants/space/${spaceId}`),
+    getBySpace: (spaceId) => api.get(`/tenants/space/${spaceId}?exclude_deleted=true`),
+
+    // Optional: Method to permanently restore a tenant or space
+    restore: (id, type = 'tenant') => {
+      return api.put(`/${type}s/${id}/restore`);
+    },
     getMetrics: () => api.get('/tenants/metrics'),
     create: (tenantData) => api.post('/tenants', tenantData),
     update: (id, tenantData) => api.put(`/tenants/${id}`, tenantData),
     delete: (id) => api.delete(`/tenants/${id}`),
+    getDeleted: () => api.get('/tenants?only_deleted=true')
   },
 };
 

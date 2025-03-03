@@ -1,5 +1,6 @@
 const SpaceModel = require('../models/space.model');
-
+const TenantModel = require('../models/tenant.model');
+const db = require('../config/database');
 class SpaceController {
   // Get all spaces (with optional filtering)
   static async getSpaces(req, res) {
@@ -166,13 +167,18 @@ class SpaceController {
 
   // Delete a space
   static async deleteSpace(req, res) {
+    const client = await db.connect(); // Use transaction for atomicity
+
     try {
+      await client.query('BEGIN');
+
       const { spaceId } = req.params;
 
       // First check if space exists and belongs to this host
       const existingSpace = await SpaceModel.findById(spaceId);
 
       if (!existingSpace) {
+        await client.query('ROLLBACK');
         return res.status(404).json({
           success: false,
           message: 'Space not found'
@@ -181,28 +187,75 @@ class SpaceController {
 
       // Verify ownership
       if (existingSpace.host_id !== req.user.id) {
+        await client.query('ROLLBACK');
         return res.status(403).json({
           success: false,
           message: 'Not authorized to delete this space'
         });
       }
 
-      await SpaceModel.delete(spaceId);
+      // Check for active non-deleted tenants before deletion
+      const tenantsQuery = `
+        SELECT * FROM tenants
+        WHERE space_id = $1
+        AND status = 'active'
+        AND is_deleted = FALSE
+      `;
+      const tenantsResult = await client.query(tenantsQuery, [spaceId]);
+      const activeTenantsCount = tenantsResult.rows.length;
+
+      if (activeTenantsCount > 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          success: false,
+          message: `Cannot delete space with ${activeTenantsCount} active tenant(s). Please move or terminate tenants first.`
+        });
+      }
+
+      // First, mark all associated tenants as deleted
+      const deleteTenantQuery = `
+        UPDATE tenants
+        SET
+          status = 'deleted',
+          is_deleted = TRUE,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE space_id = $1
+        RETURNING *
+      `;
+      await client.query(deleteTenantQuery, [spaceId]);
+
+      // Then soft delete the space
+      const deleteSpaceQuery = `
+        UPDATE spaces
+        SET
+          is_deleted = TRUE,
+          is_active = FALSE,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE space_id = $1
+        RETURNING *
+      `;
+      await client.query(deleteSpaceQuery, [spaceId]);
+
+      // Commit the transaction
+      await client.query('COMMIT');
 
       return res.status(200).json({
         success: true,
-        message: 'Space deleted successfully'
+        message: 'Space and associated tenants have been soft deleted successfully'
       });
     } catch (error) {
+      // Rollback the transaction in case of error
+      await client.query('ROLLBACK');
       console.error('Error deleting space:', error);
       return res.status(500).json({
         success: false,
         message: 'Server error while deleting space',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
+    } finally {
+      client.release();
     }
   }
-
   // Get space metrics for dashboard
   static async getSpaceMetrics(req, res) {
     try {

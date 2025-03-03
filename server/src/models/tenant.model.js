@@ -81,6 +81,7 @@ class TenantModel {
       SELECT t.*, s.title as space_title
       FROM tenants t
       JOIN spaces s ON t.space_id = s.space_id
+      WHERE t.is_deleted = FALSE
       ORDER BY t.last_name, t.first_name
     `;
 
@@ -116,7 +117,7 @@ class TenantModel {
       SELECT t.*, s.title as space_title
       FROM tenants t
       JOIN spaces s ON t.space_id = s.space_id
-      WHERE s.host_id = $1
+      WHERE s.host_id = $1 AND t.is_deleted = FALSE
       ORDER BY t.status DESC, t.last_name, t.first_name
     `;
 
@@ -200,6 +201,25 @@ class TenantModel {
       };
     } catch (error) {
       console.error('Error getting tenant metrics:', error);
+      throw error;
+    }
+  }
+  static async deleteBySpaceId(spaceId) {
+    const query = `
+      UPDATE tenants
+      SET
+        status = 'deleted',
+        is_deleted = TRUE,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE space_id = $1
+      RETURNING *
+    `;
+
+    try {
+      const result = await db.query(query, [spaceId]);
+      return result.rows;
+    } catch (error) {
+      console.error('Error soft deleting tenants for space:', error);
       throw error;
     }
   }
