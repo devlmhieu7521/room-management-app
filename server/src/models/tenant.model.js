@@ -47,20 +47,21 @@ class TenantModel {
       rent_amount || 0,
       security_deposit || 0,
       notes,
-      'active'
+      'active' // Default status for new tenants
     ];
 
     try {
       const result = await db.query(query, values);
       return result.rows[0];
     } catch (error) {
+      console.error('Error creating tenant:', error);
       throw error;
     }
   }
 
   static async findById(tenantId) {
     const query = `
-      SELECT t.*, s.title as space_title
+      SELECT t.*, s.title as space_title, s.street_address, s.city, s.state, s.zip_code
       FROM tenants t
       JOIN spaces s ON t.space_id = s.space_id
       WHERE t.tenant_id = $1
@@ -70,6 +71,7 @@ class TenantModel {
       const result = await db.query(query, [tenantId]);
       return result.rows[0] || null;
     } catch (error) {
+      console.error('Error finding tenant by ID:', error);
       throw error;
     }
   }
@@ -86,6 +88,7 @@ class TenantModel {
       const result = await db.query(query);
       return result.rows;
     } catch (error) {
+      console.error('Error finding all tenants:', error);
       throw error;
     }
   }
@@ -103,6 +106,7 @@ class TenantModel {
       const result = await db.query(query, [spaceId]);
       return result.rows;
     } catch (error) {
+      console.error('Error finding tenants by space ID:', error);
       throw error;
     }
   }
@@ -113,13 +117,14 @@ class TenantModel {
       FROM tenants t
       JOIN spaces s ON t.space_id = s.space_id
       WHERE s.host_id = $1
-      ORDER BY t.last_name, t.first_name
+      ORDER BY t.status DESC, t.last_name, t.first_name
     `;
 
     try {
       const result = await db.query(query, [hostId]);
       return result.rows;
     } catch (error) {
+      console.error('Error finding tenants by host ID:', error);
       throw error;
     }
   }
@@ -149,6 +154,7 @@ class TenantModel {
       const result = await db.query(query, [tenantId, ...values]);
       return result.rows[0] || null;
     } catch (error) {
+      console.error('Error updating tenant:', error);
       throw error;
     }
   }
@@ -164,6 +170,36 @@ class TenantModel {
       const result = await db.query(query, [tenantId]);
       return result.rows[0] || null;
     } catch (error) {
+      console.error('Error deleting tenant:', error);
+      throw error;
+    }
+  }
+
+  static async getTenantMetrics(hostId) {
+    const query = `
+      SELECT
+        COUNT(*) AS total_tenants,
+        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active_tenants,
+        SUM(CASE WHEN status = 'active' THEN rent_amount ELSE 0 END) AS total_monthly_rent,
+        SUM(CASE
+          WHEN status = 'active' AND end_date <= (CURRENT_DATE + INTERVAL '30 days')
+          AND end_date >= CURRENT_DATE THEN 1
+          ELSE 0 END) AS leases_ending_soon
+      FROM tenants t
+      JOIN spaces s ON t.space_id = s.space_id
+      WHERE s.host_id = $1
+    `;
+
+    try {
+      const result = await db.query(query, [hostId]);
+      return result.rows[0] || {
+        total_tenants: 0,
+        active_tenants: 0,
+        total_monthly_rent: 0,
+        leases_ending_soon: 0
+      };
+    } catch (error) {
+      console.error('Error getting tenant metrics:', error);
       throw error;
     }
   }

@@ -11,6 +11,7 @@ import {
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import apiService from '../../utils/api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -25,10 +26,10 @@ const Login = () => {
     setLoading(true);
 
     try {
-        const response = await api.post('/auth/login', {
-            email,
-            password
-          });
+      const response = await apiService.auth.login({
+        email,
+        password
+        });
 
       // Store token and user info in localStorage
       localStorage.setItem('token', response.data.token);

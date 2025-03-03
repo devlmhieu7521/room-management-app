@@ -39,7 +39,7 @@ import {
   AccessTime as TimeIcon,
   Notes as NotesIcon
 } from '@mui/icons-material';
-import api from '../../utils/api';
+import apiService from '../../utils/api';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -80,19 +80,23 @@ const TenantDetails = () => {
     const fetchTenantDetails = async () => {
       try {
         setLoading(true);
-        const response = await api.get(`/tenants/${tenantId}`);
+        console.log('Fetching tenant details for ID:', tenantId);
+
+        // Use apiService.tenants.getById instead of api.get
+        const response = await apiService.tenants.getById(tenantId);
+        console.log('API response:', response);
 
         if (response.data && response.data.tenant) {
+          // Store the tenant data
           setTenant(response.data.tenant);
+          console.log('Tenant data loaded:', response.data.tenant);
         } else {
-          // If API doesn't return data, use mock data
-          setMockTenant();
+          console.log('No tenant found in response:', response.data);
+          setError('Could not load tenant details');
         }
       } catch (error) {
         console.error('Error fetching tenant details:', error);
-        setError('Failed to load tenant details. Please try again later.');
-        // Provide mock data for development
-        setMockTenant();
+        setError('Failed to load tenant details: ' + (error.message || 'Unknown error'));
       } finally {
         setLoading(false);
       }
@@ -100,31 +104,6 @@ const TenantDetails = () => {
 
     fetchTenantDetails();
   }, [tenantId]);
-
-  const setMockTenant = () => {
-    // Mock tenant data for development
-    const today = new Date();
-    const oneYearFromNow = new Date(today);
-    oneYearFromNow.setFullYear(today.getFullYear() + 1);
-
-    setTenant({
-      tenant_id: tenantId,
-      first_name: 'John',
-      last_name: 'Doe',
-      email: 'john.doe@example.com',
-      phone_number: '(555) 123-4567',
-      space_id: '1',
-      space_title: 'Apartment 4B',
-      space_address: '123 Main Street, San Francisco, CA 94105',
-      start_date: '2024-01-15',
-      end_date: oneYearFromNow.toISOString().split('T')[0],
-      rent_amount: 2000,
-      security_deposit: 4000,
-      status: 'active',
-      notes: 'Tenant works as a software engineer. Has one cat named Whiskers. Prefers communication via email.',
-      created_at: '2024-01-10T00:00:00Z'
-    });
-  };
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -136,15 +115,21 @@ const TenantDetails = () => {
     try {
       const newStatus = tenant.status === 'active' ? 'former' : 'active';
 
-      await api.put(`/tenants/${tenantId}`, {
+      // Use apiService.tenants.update instead of api.put
+      const response = await apiService.tenants.update(tenantId, {
         status: newStatus
       });
 
-      // Update local state
-      setTenant({
-        ...tenant,
-        status: newStatus
-      });
+      if (response.data && response.data.tenant) {
+        // Update local state with the returned tenant data
+        setTenant(response.data.tenant);
+      } else {
+        // Fallback: update just the status if the API doesn't return the full tenant
+        setTenant({
+          ...tenant,
+          status: newStatus
+        });
+      }
 
       setNotification({
         open: true,
@@ -157,7 +142,7 @@ const TenantDetails = () => {
       console.error('Error updating tenant status:', error);
       setNotification({
         open: true,
-        message: 'Failed to update tenant status',
+        message: 'Failed to update tenant status: ' + (error.message || 'Unknown error'),
         severity: 'error'
       });
     }
@@ -165,7 +150,8 @@ const TenantDetails = () => {
 
   const handleDeleteTenant = async () => {
     try {
-      await api.delete(`/tenants/${tenantId}`);
+      // Use apiService.tenants.delete instead of api.delete
+      await apiService.tenants.delete(tenantId);
 
       setNotification({
         open: true,
@@ -181,7 +167,7 @@ const TenantDetails = () => {
       console.error('Error deleting tenant:', error);
       setNotification({
         open: true,
-        message: 'Failed to remove tenant',
+        message: 'Failed to remove tenant: ' + (error.message || 'Unknown error'),
         severity: 'error'
       });
     } finally {
@@ -220,15 +206,29 @@ const TenantDetails = () => {
     );
   }
 
-  // Calculate dates and lease status
+  // Safely calculate dates and lease status
   const today = new Date();
-  const endDate = new Date(tenant.end_date);
-  const startDate = new Date(tenant.start_date);
+  const endDate = tenant.end_date ? new Date(tenant.end_date) : null;
+  const startDate = tenant.start_date ? new Date(tenant.start_date) : null;
 
-  const daysUntilEnd = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
-  const isEndingSoon = tenant.status === 'active' && daysUntilEnd <= 60 && daysUntilEnd > 0;
-  const isOverdue = tenant.status === 'active' && daysUntilEnd < 0;
-  const leaseLength = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24 * 30)); // Approximate months
+  const hasValidDates = startDate && endDate;
+
+  let daysUntilEnd = 0;
+  let isEndingSoon = false;
+  let isOverdue = false;
+  let leaseLength = 0;
+
+  if (hasValidDates) {
+    daysUntilEnd = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
+    isEndingSoon = tenant.status === 'active' && daysUntilEnd <= 60 && daysUntilEnd > 0;
+    isOverdue = tenant.status === 'active' && daysUntilEnd < 0;
+    leaseLength = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24 * 30)); // Approximate months
+  }
+
+  // Construct the address if we have all components
+  const address = tenant.street_address
+    ? `${tenant.street_address}${tenant.city ? `, ${tenant.city}` : ''}${tenant.state ? `, ${tenant.state}` : ''}${tenant.zip_code ? ` ${tenant.zip_code}` : ''}`
+    : tenant.space_title || 'Address not available';
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -351,7 +351,7 @@ const TenantDetails = () => {
                         </ListItemIcon>
                         <ListItemText
                           primary="Space"
-                          secondary={`${tenant.space_title}${tenant.space_address ? ` - ${tenant.space_address}` : ''}`}
+                          secondary={address}
                         />
                       </ListItem>
                       <Divider variant="inset" component="li" />
@@ -361,7 +361,7 @@ const TenantDetails = () => {
                         </ListItemIcon>
                         <ListItemText
                           primary="Tenant Since"
-                          secondary={new Date(tenant.created_at).toLocaleDateString()}
+                          secondary={tenant.created_at ? new Date(tenant.created_at).toLocaleDateString() : 'Unknown'}
                         />
                       </ListItem>
                     </List>
@@ -414,7 +414,7 @@ const TenantDetails = () => {
                             Start Date
                           </Typography>
                           <Typography variant="h6">
-                            {new Date(tenant.start_date).toLocaleDateString()}
+                            {startDate ? startDate.toLocaleDateString() : 'Not set'}
                           </Typography>
                         </Grid>
                         <Grid item xs={6}>
@@ -422,7 +422,7 @@ const TenantDetails = () => {
                             End Date
                           </Typography>
                           <Typography variant="h6" color={isEndingSoon ? "warning.main" : isOverdue ? "error.main" : "text.primary"}>
-                            {new Date(tenant.end_date).toLocaleDateString()}
+                            {endDate ? endDate.toLocaleDateString() : 'Not set'}
                           </Typography>
                         </Grid>
                       </Grid>
@@ -486,49 +486,55 @@ const TenantDetails = () => {
                   <Typography variant="h6" gutterBottom>
                     Lease Information
                   </Typography>
-                  <Card variant="outlined" sx={{ mb: 3 }}>
-                    <List>
-                      <ListItem>
-                        <ListItemIcon>
-                          <HomeIcon />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary="Property"
-                          secondary={tenant.space_title}
-                        />
-                      </ListItem>
-                      <Divider variant="inset" component="li" />
-                      <ListItem>
-                        <ListItemIcon>
-                          <CalendarIcon />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary="Lease Term"
-                          secondary={`${new Date(tenant.start_date).toLocaleDateString()} to ${new Date(tenant.end_date).toLocaleDateString()} (${leaseLength} months)`}
-                        />
-                      </ListItem>
-                      <Divider variant="inset" component="li" />
-                      <ListItem>
-                        <ListItemIcon>
-                          <MoneyIcon />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary="Monthly Rent"
-                          secondary={`$${tenant.rent_amount?.toLocaleString() || 0}`}
-                        />
-                      </ListItem>
-                      <Divider variant="inset" component="li" />
-                      <ListItem>
-                        <ListItemIcon>
-                          <MoneyIcon />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary="Security Deposit"
-                          secondary={`$${tenant.security_deposit?.toLocaleString() || 0}`}
-                        />
-                      </ListItem>
-                    </List>
-                  </Card>
+                  {hasValidDates ? (
+                    <Card variant="outlined" sx={{ mb: 3 }}>
+                      <List>
+                        <ListItem>
+                          <ListItemIcon>
+                            <HomeIcon />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary="Property"
+                            secondary={tenant.space_title || 'Unknown property'}
+                          />
+                        </ListItem>
+                        <Divider variant="inset" component="li" />
+                        <ListItem>
+                          <ListItemIcon>
+                            <CalendarIcon />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary="Lease Term"
+                            secondary={`${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()} (${leaseLength || 0} months)`}
+                          />
+                        </ListItem>
+                        <Divider variant="inset" component="li" />
+                        <ListItem>
+                          <ListItemIcon>
+                            <MoneyIcon />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary="Monthly Rent"
+                            secondary={`$${tenant.rent_amount?.toLocaleString() || 0}`}
+                          />
+                        </ListItem>
+                        <Divider variant="inset" component="li" />
+                        <ListItem>
+                          <ListItemIcon>
+                            <MoneyIcon />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary="Security Deposit"
+                            secondary={`$${tenant.security_deposit?.toLocaleString() || 0}`}
+                          />
+                        </ListItem>
+                      </List>
+                    </Card>
+                  ) : (
+                    <Alert severity="info" sx={{ mb: 3 }}>
+                      Lease dates have not been properly configured for this tenant.
+                    </Alert>
+                  )}
                 </Grid>
 
                 <Grid item xs={12} md={4}>
@@ -608,7 +614,7 @@ const TenantDetails = () => {
                             Total Expected
                           </Typography>
                           <Typography variant="h5">
-                            ${((tenant.rent_amount || 0) * leaseLength).toLocaleString()}
+                            ${hasValidDates ? ((tenant.rent_amount || 0) * leaseLength).toLocaleString() : 0}
                           </Typography>
                         </Grid>
                         <Grid item xs={6}>
@@ -683,9 +689,9 @@ const TenantDetails = () => {
         <DialogContent>
           <DialogContentText>
             Are you sure you want to permanently remove {tenant.first_name} {tenant.last_name} from your records? This action cannot be undone, and all tenant information will be deleted.
-            {tenant.status === 'active' && (
+            {tenant.status === 'active' && hasValidDates && (
               <Box component="span" sx={{ display: 'block', mt: 1, fontWeight: 'bold', color: 'error.main' }}>
-                Warning: This tenant has an active lease ending {new Date(tenant.end_date).toLocaleDateString()}.
+                Warning: This tenant has an active lease ending {endDate.toLocaleDateString()}.
               </Box>
             )}
           </DialogContentText>

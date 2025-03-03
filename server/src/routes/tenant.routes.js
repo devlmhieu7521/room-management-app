@@ -7,6 +7,9 @@ const router = express.Router();
 // All tenant routes require authentication
 router.use(authMiddleware);
 
+// Get tenant metrics
+router.get('/metrics', TenantController.getTenantMetrics);
+
 // Get all tenants for the host
 router.get('/', TenantController.getTenants);
 

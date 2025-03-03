@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -13,16 +13,24 @@ import {
   Select,
   MenuItem,
   Alert,
-  CircularProgress
+  CircularProgress,
+  InputAdornment,
+  Snackbar
 } from '@mui/material';
-import api from '../../utils/api';
+import apiService from '../../utils/api';
 
 const AddTenant = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [spacesLoading, setSpacesLoading] = useState(true);
   const [error, setError] = useState('');
   const [spaces, setSpaces] = useState([]);
+  const [notification, setNotification] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   // Format today's date for default values
   const today = new Date();
@@ -33,12 +41,15 @@ const AddTenant = () => {
     return date.toISOString().split('T')[0];
   };
 
+  // Set initial state - check if we have a default space ID from the location state
+  const defaultSpaceId = location.state?.defaultSpaceId || '';
+
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
     email: '',
     phone_number: '',
-    space_id: '',
+    space_id: defaultSpaceId,
     start_date: formatDateForInput(today),
     end_date: formatDateForInput(oneYearFromNow),
     rent_amount: '',
@@ -50,16 +61,17 @@ const AddTenant = () => {
     const fetchSpaces = async () => {
       try {
         setSpacesLoading(true);
-        const response = await api.get('/spaces/host/my-spaces');
-        setSpaces(response.data.spaces || []);
+        const response = await apiService.spaces.getMySpaces();
+
+        if (response.data && response.data.spaces) {
+          console.log('Spaces fetched:', response.data.spaces);
+          setSpaces(response.data.spaces);
+        } else {
+          setError('No spaces available. Please create a space first.');
+        }
       } catch (error) {
         console.error('Error fetching spaces:', error);
-        // For development, let's add some mock data
-        setSpaces([
-          { space_id: '1', title: 'Apartment 4B', address: '123 Main St' },
-          { space_id: '2', title: 'Office Suite 7', address: '456 Business Ave' },
-          { space_id: '3', title: 'Studio 7C', address: '789 Creative Blvd' }
-        ]);
+        setError('Failed to load spaces. Please try again later.');
       } finally {
         setSpacesLoading(false);
       }
@@ -98,16 +110,43 @@ const AddTenant = () => {
         throw new Error('Lease end date must be after start date');
       }
 
-      await api.post('/tenants', formData);
+      // Process numeric values to ensure they're numbers
+      const processedData = {
+        ...formData,
+        rent_amount: formData.rent_amount ? Number(formData.rent_amount) : 0,
+        security_deposit: formData.security_deposit ? Number(formData.security_deposit) : 0
+      };
 
-      // Navigate to tenants list
-      navigate('/tenants');
+      // Submit the form
+      const response = await apiService.tenants.create(processedData);
+
+      if (response.data && response.data.tenant) {
+        setNotification({
+          open: true,
+          message: 'Tenant added successfully!',
+          severity: 'success'
+        });
+
+        // Navigate to the tenant details page after a delay
+        setTimeout(() => {
+          navigate(`/tenants/${response.data.tenant.tenant_id}`);
+        }, 1500);
+      } else {
+        throw new Error('Failed to add tenant. Please try again.');
+      }
     } catch (error) {
       console.error('Error adding tenant:', error);
       setError(error.message || 'Failed to add tenant. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseNotification = () => {
+    setNotification({
+      ...notification,
+      open: false
+    });
   };
 
   return (
@@ -181,7 +220,7 @@ const AddTenant = () => {
                   ) : (
                     spaces.map((space) => (
                       <MenuItem key={space.space_id} value={space.space_id}>
-                        {space.title} {space.address ? `- ${space.address}` : ''}
+                        {space.title} {space.city && space.state ? `- ${space.city}, ${space.state}` : ''}
                       </MenuItem>
                     ))
                   )}
@@ -228,7 +267,9 @@ const AddTenant = () => {
                 label="Monthly Rent Amount"
                 name="rent_amount"
                 type="number"
-                InputProps={{ startAdornment: '$' }}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>
+                }}
                 value={formData.rent_amount}
                 onChange={handleChange}
               />
@@ -239,7 +280,9 @@ const AddTenant = () => {
                 label="Security Deposit"
                 name="security_deposit"
                 type="number"
-                InputProps={{ startAdornment: '$' }}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>
+                }}
                 value={formData.security_deposit}
                 onChange={handleChange}
               />
@@ -266,7 +309,7 @@ const AddTenant = () => {
                 <Button
                   type="submit"
                   variant="contained"
-                  disabled={loading}
+                  disabled={loading || spaces.length === 0}
                 >
                   {loading ? 'Adding...' : 'Add Tenant'}
                 </Button>
@@ -275,6 +318,22 @@ const AddTenant = () => {
           </Grid>
         </Box>
       </Paper>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseNotification}
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

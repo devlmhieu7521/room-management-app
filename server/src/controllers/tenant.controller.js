@@ -8,34 +8,51 @@ class TenantController {
 
       // Validate required fields
       if (!tenantData.first_name || !tenantData.last_name || !tenantData.email || !tenantData.space_id) {
-        return res.status(400).json({ message: 'Missing required tenant information' });
+        return res.status(400).json({
+          success: false,
+          message: 'Missing required tenant information'
+        });
       }
 
       if (!tenantData.start_date || !tenantData.end_date) {
-        return res.status(400).json({ message: 'Lease start and end dates are required' });
+        return res.status(400).json({
+          success: false,
+          message: 'Lease start and end dates are required'
+        });
       }
 
       // Verify the space exists and belongs to this host
       const space = await SpaceModel.findById(tenantData.space_id);
 
       if (!space) {
-        return res.status(404).json({ message: 'Space not found' });
+        return res.status(404).json({
+          success: false,
+          message: 'Space not found'
+        });
       }
 
       if (space.host_id !== req.user.id) {
-        return res.status(403).json({ message: 'Not authorized to add tenants to this space' });
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to add tenants to this space'
+        });
       }
 
       // Create the tenant
       const tenant = await TenantModel.create(tenantData);
 
       return res.status(201).json({
+        success: true,
         message: 'Tenant created successfully',
         tenant
       });
     } catch (error) {
       console.error('Error creating tenant:', error);
-      return res.status(500).json({ message: 'Server error during tenant creation' });
+      return res.status(500).json({
+        success: false,
+        message: 'Server error during tenant creation',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 
@@ -45,11 +62,17 @@ class TenantController {
       const tenants = await TenantModel.findByHostId(req.user.id);
 
       return res.status(200).json({
+        success: true,
+        count: tenants.length,
         tenants
       });
     } catch (error) {
       console.error('Error fetching tenants:', error);
-      return res.status(500).json({ message: 'Server error while fetching tenants' });
+      return res.status(500).json({
+        success: false,
+        message: 'Server error while fetching tenants',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 
@@ -59,22 +82,33 @@ class TenantController {
       const tenant = await TenantModel.findById(tenantId);
 
       if (!tenant) {
-        return res.status(404).json({ message: 'Tenant not found' });
+        return res.status(404).json({
+          success: false,
+          message: 'Tenant not found'
+        });
       }
 
       // Verify that this tenant belongs to a space owned by this host
       const space = await SpaceModel.findById(tenant.space_id);
 
-      if (space.host_id !== req.user.id) {
-        return res.status(403).json({ message: 'Not authorized to view this tenant' });
+      if (!space || space.host_id !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to view this tenant'
+        });
       }
 
       return res.status(200).json({
+        success: true,
         tenant
       });
     } catch (error) {
       console.error('Error fetching tenant:', error);
-      return res.status(500).json({ message: 'Server error while fetching tenant' });
+      return res.status(500).json({
+        success: false,
+        message: 'Server error while fetching tenant',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 
@@ -86,21 +120,52 @@ class TenantController {
       const space = await SpaceModel.findById(spaceId);
 
       if (!space) {
-        return res.status(404).json({ message: 'Space not found' });
+        return res.status(404).json({
+          success: false,
+          message: 'Space not found'
+        });
       }
 
       if (space.host_id !== req.user.id) {
-        return res.status(403).json({ message: 'Not authorized to view tenants for this space' });
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to view tenants for this space'
+        });
       }
 
       const tenants = await TenantModel.findBySpaceId(spaceId);
 
       return res.status(200).json({
+        success: true,
+        count: tenants.length,
         tenants
       });
     } catch (error) {
       console.error('Error fetching space tenants:', error);
-      return res.status(500).json({ message: 'Server error while fetching space tenants' });
+      return res.status(500).json({
+        success: false,
+        message: 'Server error while fetching space tenants',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  static async getTenantMetrics(req, res) {
+    try {
+      const hostId = req.user.id;
+      const metrics = await TenantModel.getTenantMetrics(hostId);
+
+      return res.status(200).json({
+        success: true,
+        metrics
+      });
+    } catch (error) {
+      console.error('Error fetching tenant metrics:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Server error while fetching tenant metrics',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 
@@ -113,26 +178,37 @@ class TenantController {
       const tenant = await TenantModel.findById(tenantId);
 
       if (!tenant) {
-        return res.status(404).json({ message: 'Tenant not found' });
+        return res.status(404).json({
+          success: false,
+          message: 'Tenant not found'
+        });
       }
 
       // Verify that this tenant belongs to a space owned by this host
       const space = await SpaceModel.findById(tenant.space_id);
 
-      if (space.host_id !== req.user.id) {
-        return res.status(403).json({ message: 'Not authorized to update this tenant' });
+      if (!space || space.host_id !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to update this tenant'
+        });
       }
 
       // Update the tenant
       const updatedTenant = await TenantModel.update(tenantId, updateData);
 
       return res.status(200).json({
+        success: true,
         message: 'Tenant updated successfully',
         tenant: updatedTenant
       });
     } catch (error) {
       console.error('Error updating tenant:', error);
-      return res.status(500).json({ message: 'Server error while updating tenant' });
+      return res.status(500).json({
+        success: false,
+        message: 'Server error while updating tenant',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 
@@ -144,25 +220,36 @@ class TenantController {
       const tenant = await TenantModel.findById(tenantId);
 
       if (!tenant) {
-        return res.status(404).json({ message: 'Tenant not found' });
+        return res.status(404).json({
+          success: false,
+          message: 'Tenant not found'
+        });
       }
 
       // Verify that this tenant belongs to a space owned by this host
       const space = await SpaceModel.findById(tenant.space_id);
 
-      if (space.host_id !== req.user.id) {
-        return res.status(403).json({ message: 'Not authorized to delete this tenant' });
+      if (!space || space.host_id !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to delete this tenant'
+        });
       }
 
       // Delete the tenant
       await TenantModel.delete(tenantId);
 
       return res.status(200).json({
+        success: true,
         message: 'Tenant deleted successfully'
       });
     } catch (error) {
       console.error('Error deleting tenant:', error);
-      return res.status(500).json({ message: 'Server error while deleting tenant' });
+      return res.status(500).json({
+        success: false,
+        message: 'Server error while deleting tenant',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 }

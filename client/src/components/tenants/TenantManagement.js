@@ -15,10 +15,6 @@ import {
   Tabs,
   Tab,
   Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   Table,
   TableBody,
   TableCell,
@@ -39,7 +35,7 @@ import {
   Phone as PhoneIcon,
   Assignment as AssignmentIcon
 } from '@mui/icons-material';
-import api from '../../utils/api';
+import apiService from '../../utils/api';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -69,45 +65,57 @@ const TenantManagement = () => {
   const [spaces, setSpaces] = useState([]);
   const [tabValue, setTabValue] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [metrics, setMetrics] = useState({
+    total_tenants: 0,
+    active_tenants: 0,
+    total_monthly_rent: 0,
+    leases_ending_soon: 0
+  });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
 
-        // Try to fetch tenants from API
+        // Fetch tenants data
         try {
-          const tenantsResponse = await api.get('/tenants');
+          const tenantsResponse = await apiService.tenants.getAll();
           if (tenantsResponse.data && tenantsResponse.data.tenants) {
             setTenants(tenantsResponse.data.tenants);
-          } else {
-            // If API fails, use mock data
-            setMockTenants();
           }
         } catch (error) {
           console.error('Error fetching tenants:', error);
-          setMockTenants();
+          setError('Failed to load tenant data. Please try again.');
         }
 
-        // Try to fetch spaces from API
+        // Fetch tenant metrics
         try {
-          const spacesResponse = await api.get('/spaces/host/my-spaces');
+          const metricsResponse = await apiService.tenants.getMetrics();
+          if (metricsResponse.data && metricsResponse.data.metrics) {
+            setMetrics(metricsResponse.data.metrics);
+          } else {
+            // If metrics aren't available, calculate from tenants
+            calculateMetricsFromTenants(tenants);
+          }
+        } catch (error) {
+          console.error('Error fetching tenant metrics:', error);
+          // If metrics API fails, calculate from tenants
+          calculateMetricsFromTenants(tenants);
+        }
+
+        // Fetch spaces data
+        try {
+          const spacesResponse = await apiService.spaces.getMySpaces();
           if (spacesResponse.data && spacesResponse.data.spaces) {
             setSpaces(spacesResponse.data.spaces);
-          } else {
-            // If API fails, use mock data
-            setMockSpaces();
           }
         } catch (error) {
           console.error('Error fetching spaces:', error);
-          setMockSpaces();
         }
 
       } catch (error) {
         console.error('Error setting up tenant management:', error);
         setError('Failed to load tenant management data. Please try again later.');
-        setMockTenants();
-        setMockSpaces();
       } finally {
         setLoading(false);
       }
@@ -116,114 +124,24 @@ const TenantManagement = () => {
     fetchData();
   }, []);
 
-  const setMockTenants = () => {
+  // Calculate metrics from tenants array if API doesn't provide them
+  const calculateMetricsFromTenants = (tenantsList) => {
     const today = new Date();
+    const thirtyDaysFromNow = new Date(today);
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
 
-    // Generate end dates for different scenarios
-    const futureDate = new Date(today);
-    futureDate.setFullYear(today.getFullYear() + 1);
+    const activeTenants = tenantsList.filter(t => t.status === 'active');
+    const leasesEndingSoon = activeTenants.filter(tenant => {
+      const endDate = new Date(tenant.end_date);
+      return endDate <= thirtyDaysFromNow && endDate >= today;
+    });
 
-    const soonEndingDate = new Date(today);
-    soonEndingDate.setDate(today.getDate() + 30);
-
-    const pastEndDate = new Date(today);
-    pastEndDate.setMonth(today.getMonth() - 1);
-
-    // Set mock tenant data
-    setTenants([
-      {
-        tenant_id: '1',
-        first_name: 'John',
-        last_name: 'Doe',
-        email: 'john.doe@example.com',
-        phone_number: '(555) 123-4567',
-        space_id: '1',
-        space_title: 'Modern Downtown Apartment',
-        start_date: '2024-01-15',
-        end_date: futureDate.toISOString().split('T')[0],
-        rent_amount: 2000,
-        security_deposit: 4000,
-        status: 'active',
-        rent_status: 'paid'
-      },
-      {
-        tenant_id: '2',
-        first_name: 'Sarah',
-        last_name: 'Smith',
-        email: 'sarah.smith@example.com',
-        phone_number: '(555) 987-6543',
-        space_id: '2',
-        space_title: 'Cozy Studio Near Park',
-        start_date: '2024-02-01',
-        end_date: soonEndingDate.toISOString().split('T')[0],
-        rent_amount: 1500,
-        security_deposit: 3000,
-        status: 'active',
-        rent_status: 'due'
-      },
-      {
-        tenant_id: '3',
-        first_name: 'Michael',
-        last_name: 'Johnson',
-        email: 'michael.j@example.com',
-        phone_number: '(555) 567-8901',
-        space_id: '3',
-        space_title: 'Office Suite with Conference Room',
-        start_date: '2023-06-15',
-        end_date: pastEndDate.toISOString().split('T')[0],
-        rent_amount: 3500,
-        security_deposit: 7000,
-        status: 'former',
-        rent_status: 'paid'
-      },
-      {
-        tenant_id: '4',
-        first_name: 'Emma',
-        last_name: 'Wilson',
-        email: 'emma.w@example.com',
-        phone_number: '(555) 234-5678',
-        space_id: '1',
-        space_title: 'Modern Downtown Apartment',
-        start_date: '2023-12-01',
-        end_date: futureDate.toISOString().split('T')[0],
-        rent_amount: 2000,
-        security_deposit: 4000,
-        status: 'active',
-        rent_status: 'overdue'
-      }
-    ]);
-  };
-
-  const setMockSpaces = () => {
-    setSpaces([
-      {
-        space_id: '1',
-        title: 'Modern Downtown Apartment',
-        space_type: 'Apartment',
-        capacity: 2,
-        city: 'San Francisco',
-        state: 'CA',
-        is_active: true
-      },
-      {
-        space_id: '2',
-        title: 'Cozy Studio Near Park',
-        space_type: 'Studio',
-        capacity: 1,
-        city: 'Portland',
-        state: 'OR',
-        is_active: true
-      },
-      {
-        space_id: '3',
-        title: 'Office Suite with Conference Room',
-        space_type: 'Office Space',
-        capacity: 8,
-        city: 'Seattle',
-        state: 'WA',
-        is_active: true
-      }
-    ]);
+    setMetrics({
+      total_tenants: tenantsList.length,
+      active_tenants: activeTenants.length,
+      total_monthly_rent: activeTenants.reduce((sum, tenant) => sum + (tenant.rent_amount || 0), 0),
+      leases_ending_soon: leasesEndingSoon.length
+    });
   };
 
   const handleTabChange = (event, newValue) => {
@@ -283,7 +201,7 @@ const TenantManagement = () => {
         return fullName.includes(query) ||
                tenant.email.toLowerCase().includes(query) ||
                tenant.space_title.toLowerCase().includes(query) ||
-               tenant.phone_number.includes(query);
+               (tenant.phone_number && tenant.phone_number.includes(query));
       });
     }
 
@@ -329,7 +247,7 @@ const TenantManagement = () => {
                 Active Tenants
               </Typography>
               <Typography variant="h3" component="div" color="primary">
-                {getActiveTenants().length}
+                {metrics.active_tenants}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 across {spaces.length} properties
@@ -345,7 +263,7 @@ const TenantManagement = () => {
                 Monthly Revenue
               </Typography>
               <Typography variant="h3" component="div" color="primary">
-                ${getTotalMonthlyRent().toLocaleString()}
+                ${metrics.total_monthly_rent?.toLocaleString() || getTotalMonthlyRent().toLocaleString()}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 from active leases
@@ -360,8 +278,8 @@ const TenantManagement = () => {
               <Typography variant="h6" gutterBottom>
                 Leases Ending Soon
               </Typography>
-              <Typography variant="h3" component="div" color={getTenantsWithLeaseEnding().length > 0 ? "warning.main" : "primary"}>
-                {getTenantsWithLeaseEnding().length}
+              <Typography variant="h3" component="div" color={metrics.leases_ending_soon > 0 ? "warning.main" : "primary"}>
+                {metrics.leases_ending_soon || getTenantsWithLeaseEnding().length}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 in the next 30 days
@@ -512,7 +430,7 @@ const TenantManagement = () => {
                                 <MoneyIcon fontSize="small" color={tenant.rent_status === 'overdue' ? "error" : "action"} />
                                 <Box>
                                   <Typography variant="body2">
-                                    ${tenant.rent_amount?.toLocaleString()}
+                                    ${tenant.rent_amount?.toLocaleString() || 0}
                                   </Typography>
                                   {tenant.rent_status === 'overdue' && (
                                     <Typography variant="caption" color="error.main">
@@ -524,7 +442,7 @@ const TenantManagement = () => {
                             </TableCell>
                             <TableCell>
                               <Chip
-                                label={tenant.status}
+                                label={tenant.status || 'active'}
                                 color={tenant.status === 'active' ? 'success' : 'default'}
                                 size="small"
                               />

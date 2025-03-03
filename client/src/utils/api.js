@@ -87,6 +87,7 @@ const apiService = {
     getAll: () => api.get('/tenants'),
     getById: (id) => api.get(`/tenants/${id}`),
     getBySpace: (spaceId) => api.get(`/tenants/space/${spaceId}`),
+    getMetrics: () => api.get('/tenants/metrics'),
     create: (tenantData) => api.post('/tenants', tenantData),
     update: (id, tenantData) => api.put(`/tenants/${id}`, tenantData),
     delete: (id) => api.delete(`/tenants/${id}`),
