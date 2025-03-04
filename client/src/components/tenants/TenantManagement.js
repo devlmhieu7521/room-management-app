@@ -67,7 +67,6 @@ const TenantManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [metrics, setMetrics] = useState({
     total_tenants: 0,
-    active_tenants: 0,
     total_monthly_rent: 0,
     leases_ending_soon: 0
   });
@@ -130,7 +129,7 @@ const TenantManagement = () => {
     const thirtyDaysFromNow = new Date(today);
     thirtyDaysFromNow.setDate(today.getDate() + 30);
 
-    const activeTenants = tenantsList.filter(t => t.is_deleted === false);
+    const activeTenants = tenantsList.filter(t => !t.is_deleted);
     const leasesEndingSoon = activeTenants.filter(tenant => {
       const endDate = new Date(tenant.end_date);
       return endDate <= thirtyDaysFromNow && endDate >= today;
@@ -138,7 +137,6 @@ const TenantManagement = () => {
 
     setMetrics({
       total_tenants: tenantsList.length,
-      active_tenants: activeTenants.length,
       total_monthly_rent: activeTenants.reduce((sum, tenant) => sum + (tenant.rent_amount || 0), 0),
       leases_ending_soon: leasesEndingSoon.length
     });
@@ -159,19 +157,40 @@ const TenantManagement = () => {
     thirtyDaysFromNow.setDate(today.getDate() + 30);
 
     return tenants.filter(tenant => {
+      if (tenant.is_deleted) return false;
       const endDate = new Date(tenant.end_date);
       return endDate <= thirtyDaysFromNow && endDate >= today;
     });
   };
-  const getTenantsWithOverdueRent = () =>
-  tenants.filter(t => t.rent_status === 'overdue');
+
+  const getTenantsWithOverdueRent = () => {
+    // In this version, we'll identify overdue rent by past due dates
+    // since there's no longer a status column
+    const today = new Date();
+    return tenants.filter(tenant => {
+      if (tenant.is_deleted) return false;
+
+      // For this example, we'll consider any lease that ended but still active as having overdue rent
+      const endDate = new Date(tenant.end_date);
+      return endDate < today && !tenant.is_deleted;
+    });
+  };
 
   const getTotalMonthlyRent = () =>
-  tenants.reduce((sum, tenant) => sum + (tenant.rent_amount || 0), 0);
+    tenants.filter(t => !t.is_deleted).reduce((sum, tenant) => sum + (tenant.rent_amount || 0), 0);
 
   // Filter tenants based on active tab and search query
   const getFilteredTenants = () => {
-    let filtered = [];
+    // First filter based on the active tab
+    let filtered = tenants;
+
+    if (tabValue === 1) {
+      // Leases ending soon tab
+      filtered = getTenantsWithLeaseEnding();
+    } else if (tabValue === 2) {
+      // Rent issues tab
+      filtered = getTenantsWithOverdueRent();
+    }
 
     // Then filter by search query
     if (searchQuery) {
@@ -195,6 +214,9 @@ const TenantManagement = () => {
       </Box>
     );
   }
+
+  // Count non-deleted tenants
+  const activeTenantCount = tenants.filter(t => !t.is_deleted).length;
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -227,7 +249,7 @@ const TenantManagement = () => {
                 Active Tenants
               </Typography>
               <Typography variant="h3" component="div" color="primary">
-                {metrics.active_tenants}
+                {activeTenantCount}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 across {spaces.length} properties
@@ -325,7 +347,6 @@ const TenantManagement = () => {
                       <TableCell>Property</TableCell>
                       <TableCell>Lease Period</TableCell>
                       <TableCell>Monthly Rent</TableCell>
-                      <TableCell>Status</TableCell>
                       <TableCell>Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -359,8 +380,8 @@ const TenantManagement = () => {
                         const today = new Date();
                         const endDate = new Date(tenant.end_date);
                         const daysUntilEnd = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
-                        const isEndingSoon = tenant.is_deleted === false && daysUntilEnd <= 30 && daysUntilEnd > 0;
-                        const isOverdue = tenant.is_deleted === false && daysUntilEnd < 0;
+                        const isEndingSoon = !tenant.is_deleted && daysUntilEnd <= 30 && daysUntilEnd > 0;
+                        const isOverdue = !tenant.is_deleted && daysUntilEnd < 0;
 
                         return (
                           <TableRow key={tenant.tenant_id}>
@@ -406,18 +427,25 @@ const TenantManagement = () => {
                             </TableCell>
                             <TableCell>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <MoneyIcon fontSize="small" color={tenant.rent_status === 'overdue' ? "error" : "action"} />
+                                <MoneyIcon fontSize="small" color={isOverdue ? "error" : "action"} />
                                 <Box>
                                   <Typography variant="body2">
                                     ${tenant.rent_amount?.toLocaleString() || 0}
                                   </Typography>
-                                  {tenant.rent_status === 'overdue' && (
+                                  {isOverdue && (
                                     <Typography variant="caption" color="error.main">
-                                      Payment overdue
+                                      Lease expired
                                     </Typography>
                                   )}
                                 </Box>
                               </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={tenant.is_deleted ? 'Inactive' : 'Active'}
+                                color={tenant.is_deleted ? 'default' : 'success'}
+                                size="small"
+                              />
                             </TableCell>
                             <TableCell>
                               <Button

@@ -27,9 +27,7 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
-  Snackbar,
-  Tabs,
-  Tab
+  Snackbar
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -50,7 +48,6 @@ const TenantsList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [tab, setTab] = useState(0);
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -69,8 +66,10 @@ const TenantsList = () => {
         console.log('Tenants API response:', response);
 
         if (response.data && response.data.tenants) {
-          setTenants(response.data.tenants);
-          console.log('Tenant data loaded:', response.data.tenants);
+          // Filter to only show non-deleted tenants
+          const nonDeletedTenants = response.data.tenants.filter(tenant => !tenant.is_deleted);
+          setTenants(nonDeletedTenants);
+          console.log('Tenant data loaded:', nonDeletedTenants);
         } else {
           console.log('No tenants found in response:', response.data);
           setTenants([]);
@@ -89,10 +88,6 @@ const TenantsList = () => {
 
   const handleSearch = (event) => {
     setSearchQuery(event.target.value);
-  };
-
-  const handleChangeTab = (event, newValue) => {
-    setTab(newValue);
   };
 
   const handleMenuOpen = (event, tenant) => {
@@ -145,8 +140,7 @@ const TenantsList = () => {
   };
 
   const filteredTenants = tenants.filter(tenant => {
-
-    // Then filter by search query
+    // Filter by search query
     if (!searchQuery) return true;
 
     // Safe concatenation of first and last name
@@ -159,10 +153,8 @@ const TenantsList = () => {
            (tenant.phone_number && tenant.phone_number.includes(query));
   });
 
-  // Sort tenants - active first, then by lease end date (soonest first)
+  // Sort tenants by lease end date (soonest first)
   const sortedTenants = [...filteredTenants].sort((a, b) => {
-
-    // Then sort by lease end date
     return new Date(a.end_date || 0) - new Date(b.end_date || 0);
   });
 
@@ -207,18 +199,6 @@ const TenantsList = () => {
         </Alert>
       )}
 
-      <Paper sx={{ mb: 3 }}>
-        <Tabs
-          value={tab}
-          onChange={handleChangeTab}
-          indicatorColor="primary"
-          textColor="primary"
-          variant="fullWidth"
-        >
-          <Tab label={`All Tenants (${tenants.length})`} />
-        </Tabs>
-      </Paper>
-
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ mb: 3 }}>
           <TextField
@@ -236,16 +216,11 @@ const TenantsList = () => {
           />
         </Box>
 
-        {endingSoonCount > 0 && tab !== 2 && (
+        {endingSoonCount > 0 && (
           <Box sx={{ mb: 3 }}>
             <Alert
               severity="warning"
               icon={<OverdueIcon />}
-              action={
-                <Button color="inherit" size="small">
-                  View All
-                </Button>
-              }
             >
               {endingSoonCount} {endingSoonCount === 1 ? 'tenant' : 'tenants'} with {endingSoonCount === 1 ? 'lease' : 'leases'} ending in the next 60 days
             </Alert>
@@ -267,7 +242,7 @@ const TenantsList = () => {
             <TableBody>
               {sortedTenants.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={6} align="center">
                     <Box sx={{ py: 3 }}>
                       <Typography variant="subtitle1" gutterBottom>
                         No tenants found
@@ -301,8 +276,8 @@ const TenantsList = () => {
                   if (hasValidDates) {
                     const endDate = new Date(tenant.end_date);
                     daysUntilEnd = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
-                    isEndingSoon = tenant.is_deleted === false && daysUntilEnd <= 60 && daysUntilEnd > 0;
-                    isOverdue = tenant.is_deleted === false && daysUntilEnd < 0;
+                    isEndingSoon = daysUntilEnd <= 60 && daysUntilEnd > 0;
+                    isOverdue = daysUntilEnd < 0;
                   }
 
                   return (
@@ -358,7 +333,6 @@ const TenantsList = () => {
                         )}
                       </TableCell>
                       <TableCell>${tenant.rent_amount?.toLocaleString() || 0}/month</TableCell>
-
                       <TableCell align="right">
                         <IconButton
                           size="small"
@@ -387,15 +361,6 @@ const TenantsList = () => {
           navigate(`/tenants/${selectedTenant?.tenant_id}`);
         }}>
           <ListItemIcon>
-            <LeaseIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>View Details</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => {
-          handleMenuClose();
-          navigate(`/tenants/${selectedTenant?.tenant_id}/edit`);
-        }}>
-          <ListItemIcon>
             <EditIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>Edit Tenant</ListItemText>
@@ -417,7 +382,7 @@ const TenantsList = () => {
         <DialogContent>
           <DialogContentText>
             Are you sure you want to remove {selectedTenant?.first_name} {selectedTenant?.last_name} from {selectedTenant?.space_title || 'this space'}?
-            {selectedTenant?.is_deleted === false && selectedTenant?.end_date && (
+            {selectedTenant && !selectedTenant.is_deleted && selectedTenant.end_date && (
               <Box component="span" sx={{ display: 'block', mt: 1, fontWeight: 'bold' }}>
                 Warning: This tenant has an active lease ending {new Date(selectedTenant.end_date).toLocaleDateString()}.
               </Box>

@@ -198,7 +198,6 @@ class SpaceController {
       const tenantsQuery = `
         SELECT * FROM tenants
         WHERE space_id = $1
-        AND status = 'active'
         AND is_deleted = false
       `;
       const tenantsResult = await client.query(tenantsQuery, [spaceId]);
@@ -216,7 +215,6 @@ class SpaceController {
       const deleteTenantQuery = `
         UPDATE tenants
         SET
-          status = 'deleted',
           is_deleted = TRUE,
           updated_at = CURRENT_TIMESTAMP
         WHERE space_id = $1

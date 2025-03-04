@@ -230,6 +230,9 @@ const SpaceManagement = () => {
     );
   }
 
+  // We only show non-deleted tenants, so the tenant count is simply the length
+  const tenantCount = tenants.length;
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ mb: 3 }}>
@@ -388,8 +391,8 @@ const SpaceManagement = () => {
                           <PersonIcon />
                         </ListItemIcon>
                         <ListItemText
-                          primary="Current Tenants"
-                          secondary={tenants.filter(t => t.status === 'active').length || 0}
+                          primary="Tenants"
+                          secondary={tenantCount || 0}
                         />
                       </ListItem>
                       <Divider />
@@ -399,7 +402,7 @@ const SpaceManagement = () => {
                         </ListItemIcon>
                         <ListItemText
                           primary="Occupancy Rate"
-                          secondary={space.capacity > 0 ? `${Math.round((tenants.filter(t => t.status === 'active').length / space.capacity) * 100)}%` : '0%'}
+                          secondary={space.capacity > 0 ? `${Math.round((tenantCount / space.capacity) * 100)}%` : '0%'}
                         />
                       </ListItem>
                       <Divider />
@@ -409,7 +412,7 @@ const SpaceManagement = () => {
                         </ListItemIcon>
                         <ListItemText
                           primary="Monthly Revenue"
-                          secondary={`$${tenants.filter(t => t.status === 'active').reduce((sum, tenant) => sum + (tenant.rent_amount || 0), 0).toLocaleString()}`}
+                          secondary={`${tenants.reduce((sum, tenant) => sum + (tenant.rent_amount || 0), 0).toLocaleString()}`}
                         />
                       </ListItem>
                     </List>
@@ -470,7 +473,7 @@ const SpaceManagement = () => {
                       <TableCell>Contact</TableCell>
                       <TableCell>Lease Period</TableCell>
                       <TableCell>Rent</TableCell>
-                      <TableCell>Status</TableCell>
+                      {/* Status column removed */}
                       <TableCell>Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -482,39 +485,42 @@ const SpaceManagement = () => {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      tenants.map((tenant) => (
-                        <TableRow key={tenant.tenant_id}>
-                          <TableCell>
-                            {tenant.first_name} {tenant.last_name}
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">{tenant.email}</Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {tenant.phone_number}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            {new Date(tenant.start_date).toLocaleDateString()} to {new Date(tenant.end_date).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>${tenant.rent_amount?.toLocaleString() || 0}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={tenant.status || 'active'}
-                              color={tenant.status === 'active' ? 'success' : 'default'}
-                              size="small"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => navigate(`/tenants/${tenant.tenant_id}`)}
-                            >
-                              Details
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                      tenants.map((tenant) => {
+                        // Calculate if lease is ending soon
+                        const today = new Date();
+                        const endDate = new Date(tenant.end_date);
+                        const daysUntilEnd = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
+                        const isEndingSoon = daysUntilEnd <= 30 && daysUntilEnd > 0;
+                        const isOverdue = daysUntilEnd < 0;
+
+                        return (
+                          <TableRow key={tenant.tenant_id}>
+                            <TableCell>
+                              {tenant.first_name} {tenant.last_name}
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2">{tenant.email}</Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {tenant.phone_number}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              {new Date(tenant.start_date).toLocaleDateString()} to {new Date(tenant.end_date).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>${tenant.rent_amount?.toLocaleString() || 0}</TableCell>
+                            {/* Status cell removed */}
+                            <TableCell>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => navigate(`/tenants/${tenant.tenant_id}`)}
+                              >
+                                Details
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
@@ -559,6 +565,13 @@ const SpaceManagement = () => {
         <DialogTitle>
           {space.is_active ? 'Deactivate Space' : 'Activate Space'}
         </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {space.is_active
+              ? 'Deactivating this space will hide it from listings and prevent new bookings. Existing tenants will not be affected.'
+              : 'Activating this space will make it visible in listings and allow new bookings.'}
+          </DialogContentText>
+        </DialogContent>
         <DialogActions>
           <Button onClick={() => setStatusDialogOpen(false)}>Cancel</Button>
           <Button
@@ -580,9 +593,9 @@ const SpaceManagement = () => {
         <DialogContent>
           <DialogContentText>
             Are you sure you want to delete "{space.title}"? This action cannot be undone and will remove all associated tenant records.
-            {tenants.filter(t => t.status === 'active').length > 0 && (
+            {tenantCount > 0 && (
               <Box component="span" fontWeight="bold" sx={{ display: 'block', mt: 1, color: 'error.main' }}>
-                Warning: This space has {tenants.filter(t => t.status === 'active').length} active tenant(s).
+                Warning: This space has {tenantCount} tenant(s).
               </Box>
             )}
           </DialogContentText>

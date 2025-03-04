@@ -9,7 +9,6 @@ import {
   Card,
   CardContent,
   Button,
-  Chip,
   Divider,
   List,
   ListItem,
@@ -24,7 +23,8 @@ import {
   DialogTitle,
   Snackbar,
   Tab,
-  Tabs
+  Tabs,
+  Chip
 } from '@mui/material';
 import {
   Person as PersonIcon,
@@ -68,7 +68,7 @@ const TenantDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tabValue, setTabValue] = useState(0);
-  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  // No longer using status dialog since we're not showing tenant status
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [notification, setNotification] = useState({
     open: false,
@@ -108,6 +108,8 @@ const TenantDetails = () => {
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
+
+  // No longer using status toggle functionality
 
   const handleDeleteTenant = async () => {
     try {
@@ -181,8 +183,8 @@ const TenantDetails = () => {
 
   if (hasValidDates) {
     daysUntilEnd = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
-    isEndingSoon = tenant.is_deleted === false && daysUntilEnd <= 60 && daysUntilEnd > 0;
-    isOverdue = tenant.is_deleted === false && daysUntilEnd < 0;
+    isEndingSoon = daysUntilEnd <= 60 && daysUntilEnd > 0;
+    isOverdue = daysUntilEnd < 0;
     leaseLength = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24 * 30)); // Approximate months
   }
 
@@ -209,7 +211,40 @@ const TenantDetails = () => {
                   {tenant.first_name} {tenant.last_name}
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  {isEndingSoon && (
+                    <Chip
+                      label={`Lease ending in ${daysUntilEnd} days`}
+                      color="warning"
+                      size="small"
+                    />
+                  )}
 
+                  {isOverdue && (
+                    <Chip
+                      label={`Lease ended ${-daysUntilEnd} days ago`}
+                      color="error"
+                      size="small"
+                    />
+                  )}
+                </Box>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<EditIcon />}
+                  onClick={() => navigate(`/tenants/${tenantId}/edit`)}
+                >
+                  Edit Tenant
+                </Button>
+              </Box>
+              <Box  sx={{display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Box>
+                  <Chip
+                    label={tenant.is_deleted ? 'Inactive' : 'Active'}
+                    color={tenant.is_deleted ? 'default' : 'success'}
+                    size="small"
+                  />
                   {isEndingSoon && (
                     <Chip
                       label={`Lease ending in ${daysUntilEnd} days`}
@@ -385,7 +420,7 @@ const TenantDetails = () => {
                   <Typography variant="h6" gutterBottom>
                     Quick Actions
                   </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     <Button
                       variant="outlined"
                       startIcon={<EditIcon />}
@@ -484,40 +519,19 @@ const TenantDetails = () => {
                   </Typography>
                   <Card sx={{ mb: 3 }}>
                     <CardContent>
-                      {tenant.is_deleted === false ? (
-                        <>
-                          <Button
-                            fullWidth
-                            variant="contained"
-                            color="primary"
-                            sx={{ mb: 2 }}
-                            onClick={() => navigate(`/tenants/${tenantId}/renew`)}
-                            disabled
-                          >
-                            Renew Lease
-                          </Button>
-                          <Button
-                            fullWidth
-                            variant="outlined"
-                            color="error"
-                            onClick={() => setStatusDialogOpen(true)}
-                          >
-                            Mark as Former Tenant
-                          </Button>
-                          <Typography variant="caption" sx={{ display: 'block', mt: 2, textAlign: 'center' }}>
-                            * Lease renewal functionality will be available in a future update
-                          </Typography>
-                        </>
-                      ) : (
-                        <Button
-                          fullWidth
-                          variant="contained"
-                          color="primary"
-                          onClick={() => setStatusDialogOpen(true)}
-                        >
-                          Reactivate Tenant
-                        </Button>
-                      )}
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        color="primary"
+                        sx={{ mb: 2 }}
+                        onClick={() => navigate(`/tenants/${tenantId}/renew`)}
+                        disabled
+                      >
+                        Renew Lease
+                      </Button>
+                      <Typography variant="caption" sx={{ display: 'block', mt: 2, textAlign: 'center' }}>
+                        * Lease renewal functionality will be available in a future update
+                      </Typography>
                     </CardContent>
                   </Card>
                 </Grid>
@@ -602,10 +616,10 @@ const TenantDetails = () => {
         <DialogTitle>Remove Tenant</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to permanently remove {tenant.first_name} {tenant.last_name} from your records? This action cannot be undone, and all tenant information will be deleted.
-            {tenant.status === 'active' && hasValidDates && (
+            Are you sure you want to remove {tenant.first_name} {tenant.last_name} from your records? This action cannot be undone, and all tenant information will be deleted.
+            {hasValidDates && (
               <Box component="span" sx={{ display: 'block', mt: 1, fontWeight: 'bold', color: 'error.main' }}>
-                Warning: This tenant has an active lease ending {endDate.toLocaleDateString()}.
+                Warning: This tenant has a lease ending {endDate.toLocaleDateString()}.
               </Box>
             )}
           </DialogContentText>

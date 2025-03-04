@@ -28,9 +28,10 @@ class TenantModel {
         end_date,
         rent_amount,
         security_deposit,
-        notes
+        notes,
+        is_deleted
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
 
@@ -45,7 +46,8 @@ class TenantModel {
       end_date,
       rent_amount || 0,
       security_deposit || 0,
-      notes
+      notes,
+      false // Default to not deleted
     ];
 
     try {
@@ -62,7 +64,7 @@ class TenantModel {
       SELECT t.*, s.title as space_title, s.street_address, s.city, s.state, s.zip_code
       FROM tenants t
       JOIN spaces s ON t.space_id = s.space_id
-      WHERE t.tenant_id = $1
+      WHERE t.tenant_id = $1 AND t.is_deleted = false
     `;
 
     try {
@@ -97,7 +99,7 @@ class TenantModel {
       SELECT t.*, s.title as space_title
       FROM tenants t
       JOIN spaces s ON t.space_id = s.space_id
-      WHERE t.space_id = $1
+      WHERE t.space_id = $1 AND t.is_deleted = false
       ORDER BY t.last_name, t.first_name
     `;
 
@@ -115,7 +117,7 @@ class TenantModel {
       SELECT t.*, s.title as space_title
       FROM tenants t
       JOIN spaces s ON t.space_id = s.space_id
-      WHERE s.host_id = $1
+      WHERE s.host_id = $1 AND t.is_deleted = false
       ORDER BY t.last_name, t.first_name
     `;
 
@@ -159,6 +161,25 @@ class TenantModel {
   }
 
   static async delete(tenantId) {
+    // Soft delete the tenant by setting is_deleted to true
+    const query = `
+      UPDATE tenants
+      SET is_deleted = TRUE, updated_at = CURRENT_TIMESTAMP
+      WHERE tenant_id = $1
+      RETURNING *
+    `;
+
+    try {
+      const result = await db.query(query, [tenantId]);
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error deleting tenant:', error);
+      throw error;
+    }
+  }
+
+  static async hardDelete(tenantId) {
+    // Only use this for actual removal from database if needed
     const query = `
       DELETE FROM tenants
       WHERE tenant_id = $1
@@ -169,7 +190,7 @@ class TenantModel {
       const result = await db.query(query, [tenantId]);
       return result.rows[0] || null;
     } catch (error) {
-      console.error('Error deleting tenant:', error);
+      console.error('Error hard deleting tenant:', error);
       throw error;
     }
   }
@@ -200,6 +221,7 @@ class TenantModel {
       throw error;
     }
   }
+
   static async deleteBySpaceId(spaceId) {
     const query = `
       UPDATE tenants
