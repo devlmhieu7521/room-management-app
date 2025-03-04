@@ -130,7 +130,7 @@ const TenantManagement = () => {
     const thirtyDaysFromNow = new Date(today);
     thirtyDaysFromNow.setDate(today.getDate() + 30);
 
-    const activeTenants = tenantsList.filter(t => t.status === 'active');
+    const activeTenants = tenantsList.filter(t => t.is_deleted === false);
     const leasesEndingSoon = activeTenants.filter(tenant => {
       const endDate = new Date(tenant.end_date);
       return endDate <= thirtyDaysFromNow && endDate >= today;
@@ -153,45 +153,25 @@ const TenantManagement = () => {
   };
 
   // Helper functions for tenant analysis
-  const getActiveTenants = () => tenants.filter(t => t.status === 'active');
-  const getFormerTenants = () => tenants.filter(t => t.status !== 'active');
   const getTenantsWithLeaseEnding = () => {
     const today = new Date();
     const thirtyDaysFromNow = new Date(today);
     thirtyDaysFromNow.setDate(today.getDate() + 30);
 
-    return getActiveTenants().filter(tenant => {
+    return tenants.filter(tenant => {
       const endDate = new Date(tenant.end_date);
       return endDate <= thirtyDaysFromNow && endDate >= today;
     });
   };
   const getTenantsWithOverdueRent = () =>
-    getActiveTenants().filter(t => t.rent_status === 'overdue');
+  tenants.filter(t => t.rent_status === 'overdue');
 
   const getTotalMonthlyRent = () =>
-    getActiveTenants().reduce((sum, tenant) => sum + (tenant.rent_amount || 0), 0);
+  tenants.reduce((sum, tenant) => sum + (tenant.rent_amount || 0), 0);
 
   // Filter tenants based on active tab and search query
   const getFilteredTenants = () => {
     let filtered = [];
-
-    // First filter by tab
-    switch(tabValue) {
-      case 0: // All Tenants
-        filtered = tenants;
-        break;
-      case 1: // Active Tenants
-        filtered = getActiveTenants();
-        break;
-      case 2: // Leases Ending Soon
-        filtered = getTenantsWithLeaseEnding();
-        break;
-      case 3: // Rent Issues
-        filtered = getTenantsWithOverdueRent();
-        break;
-      default:
-        filtered = tenants;
-    }
 
     // Then filter by search query
     if (searchQuery) {
@@ -315,7 +295,6 @@ const TenantManagement = () => {
                 scrollButtons="auto"
               >
                 <Tab icon={<PeopleIcon />} label={`All Tenants (${tenants.length})`} />
-                <Tab icon={<PeopleIcon />} label={`Active (${getActiveTenants().length})`} />
                 <Tab icon={<EventIcon />} label={`Leases Ending (${getTenantsWithLeaseEnding().length})`} />
                 <Tab icon={<WarningIcon />} label={`Rent Issues (${getTenantsWithOverdueRent().length})`} />
               </Tabs>
@@ -380,8 +359,8 @@ const TenantManagement = () => {
                         const today = new Date();
                         const endDate = new Date(tenant.end_date);
                         const daysUntilEnd = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
-                        const isEndingSoon = tenant.status === 'active' && daysUntilEnd <= 30 && daysUntilEnd > 0;
-                        const isOverdue = tenant.status === 'active' && daysUntilEnd < 0;
+                        const isEndingSoon = tenant.is_deleted === false && daysUntilEnd <= 30 && daysUntilEnd > 0;
+                        const isOverdue = tenant.is_deleted === false && daysUntilEnd < 0;
 
                         return (
                           <TableRow key={tenant.tenant_id}>
@@ -439,13 +418,6 @@ const TenantManagement = () => {
                                   )}
                                 </Box>
                               </Box>
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                label={tenant.status || 'active'}
-                                color={tenant.status === 'active' ? 'success' : 'default'}
-                                size="small"
-                              />
                             </TableCell>
                             <TableCell>
                               <Button

@@ -199,7 +199,7 @@ class SpaceController {
         SELECT * FROM tenants
         WHERE space_id = $1
         AND status = 'active'
-        AND is_deleted = FALSE
+        AND is_deleted = false
       `;
       const tenantsResult = await client.query(tenantsQuery, [spaceId]);
       const activeTenantsCount = tenantsResult.rows.length;
@@ -229,7 +229,7 @@ class SpaceController {
         UPDATE spaces
         SET
           is_deleted = TRUE,
-          is_active = FALSE,
+          is_active = false,
           updated_at = CURRENT_TIMESTAMP
         WHERE space_id = $1
         RETURNING *

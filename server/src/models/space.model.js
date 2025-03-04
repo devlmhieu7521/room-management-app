@@ -79,11 +79,11 @@ class SpaceModel {
       SELECT
         s.*,
         COALESCE(
-          (SELECT COUNT(*) FROM tenants WHERE space_id = s.space_id AND status = 'active'),
+          (SELECT COUNT(*) FROM tenants WHERE space_id = s.space_id),
           0
         ) AS tenant_count
       FROM spaces s
-      WHERE s.host_id = $1 AND s.is_deleted = FALSE
+      WHERE s.host_id = $1 AND s.is_deleted = false
       ORDER BY s.created_at DESC
     `;
 
@@ -102,7 +102,7 @@ class SpaceModel {
     SELECT s.*,
            (SELECT COUNT(*) FROM tenants WHERE space_id = s.space_id AND status = 'active') AS tenant_count
     FROM spaces s
-    WHERE s.is_active = TRUE AND s.is_deleted = FALSE`;
+    WHERE s.is_active = TRUE AND s.is_deleted = false`;
 
     const values = [];
 
@@ -173,7 +173,7 @@ class SpaceModel {
       UPDATE spaces
       SET
         is_deleted = TRUE,
-        is_active = FALSE,
+        is_active = false,
         updated_at = CURRENT_TIMESTAMP
       WHERE space_id = $1
       RETURNING *

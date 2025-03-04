@@ -28,10 +28,9 @@ class TenantModel {
         end_date,
         rent_amount,
         security_deposit,
-        notes,
-        status
+        notes
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `;
 
@@ -46,8 +45,7 @@ class TenantModel {
       end_date,
       rent_amount || 0,
       security_deposit || 0,
-      notes,
-      'active' // Default status for new tenants
+      notes
     ];
 
     try {
@@ -81,7 +79,7 @@ class TenantModel {
       SELECT t.*, s.title as space_title
       FROM tenants t
       JOIN spaces s ON t.space_id = s.space_id
-      WHERE t.is_deleted = FALSE
+      WHERE t.is_deleted = false
       ORDER BY t.last_name, t.first_name
     `;
 
@@ -117,8 +115,8 @@ class TenantModel {
       SELECT t.*, s.title as space_title
       FROM tenants t
       JOIN spaces s ON t.space_id = s.space_id
-      WHERE s.host_id = $1 AND t.is_deleted = FALSE
-      ORDER BY t.status DESC, t.last_name, t.first_name
+      WHERE s.host_id = $1
+      ORDER BY t.last_name, t.first_name
     `;
 
     try {
@@ -180,10 +178,9 @@ class TenantModel {
     const query = `
       SELECT
         COUNT(*) AS total_tenants,
-        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active_tenants,
-        SUM(CASE WHEN status = 'active' THEN rent_amount ELSE 0 END) AS total_monthly_rent,
+        SUM(CASE WHEN is_deleted = false THEN rent_amount ELSE 0 END) AS total_monthly_rent,
         SUM(CASE
-          WHEN status = 'active' AND end_date <= (CURRENT_DATE + INTERVAL '30 days')
+          WHEN is_deleted = false AND end_date <= (CURRENT_DATE + INTERVAL '30 days')
           AND end_date >= CURRENT_DATE THEN 1
           ELSE 0 END) AS leases_ending_soon
       FROM tenants t
@@ -195,7 +192,6 @@ class TenantModel {
       const result = await db.query(query, [hostId]);
       return result.rows[0] || {
         total_tenants: 0,
-        active_tenants: 0,
         total_monthly_rent: 0,
         leases_ending_soon: 0
       };
@@ -208,7 +204,6 @@ class TenantModel {
     const query = `
       UPDATE tenants
       SET
-        status = 'deleted',
         is_deleted = TRUE,
         updated_at = CURRENT_TIMESTAMP
       WHERE space_id = $1

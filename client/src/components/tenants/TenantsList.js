@@ -144,15 +144,7 @@ const TenantsList = () => {
     });
   };
 
-  // Use safe property access to prevent errors with unexpected data structure
-  const getTenantsWithStatus = (status) => {
-    return tenants.filter(tenant => tenant.status === status);
-  };
-
   const filteredTenants = tenants.filter(tenant => {
-    // Filter by tab first
-    if (tab === 1 && tenant.status !== 'active') return false;
-    if (tab === 2 && tenant.status === 'active') return false;
 
     // Then filter by search query
     if (!searchQuery) return true;
@@ -169,9 +161,6 @@ const TenantsList = () => {
 
   // Sort tenants - active first, then by lease end date (soonest first)
   const sortedTenants = [...filteredTenants].sort((a, b) => {
-    // First sort by status (active first)
-    if (a.status === 'active' && b.status !== 'active') return -1;
-    if (a.status !== 'active' && b.status === 'active') return 1;
 
     // Then sort by lease end date
     return new Date(a.end_date || 0) - new Date(b.end_date || 0);
@@ -183,14 +172,10 @@ const TenantsList = () => {
   sixtyDaysFromNow.setDate(today.getDate() + 60);
 
   const endingSoonCount = tenants.filter(tenant =>
-    tenant.status === 'active' &&
     tenant.end_date && // Make sure end_date exists
     new Date(tenant.end_date) <= sixtyDaysFromNow &&
     new Date(tenant.end_date) >= today
   ).length;
-
-  const activeCount = getTenantsWithStatus('active').length;
-  const formerCount = tenants.length - activeCount;
 
   if (loading) {
     return (
@@ -231,8 +216,6 @@ const TenantsList = () => {
           variant="fullWidth"
         >
           <Tab label={`All Tenants (${tenants.length})`} />
-          <Tab label={`Active (${activeCount})`} />
-          <Tab label={`Former (${formerCount})`} />
         </Tabs>
       </Paper>
 
@@ -278,7 +261,6 @@ const TenantsList = () => {
                 <TableCell>Space</TableCell>
                 <TableCell>Lease Period</TableCell>
                 <TableCell>Rent</TableCell>
-                <TableCell>Status</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -319,8 +301,8 @@ const TenantsList = () => {
                   if (hasValidDates) {
                     const endDate = new Date(tenant.end_date);
                     daysUntilEnd = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
-                    isEndingSoon = tenant.status === 'active' && daysUntilEnd <= 60 && daysUntilEnd > 0;
-                    isOverdue = tenant.status === 'active' && daysUntilEnd < 0;
+                    isEndingSoon = tenant.is_deleted === false && daysUntilEnd <= 60 && daysUntilEnd > 0;
+                    isOverdue = tenant.is_deleted === false && daysUntilEnd < 0;
                   }
 
                   return (
@@ -376,13 +358,7 @@ const TenantsList = () => {
                         )}
                       </TableCell>
                       <TableCell>${tenant.rent_amount?.toLocaleString() || 0}/month</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={tenant.status || 'active'}
-                          color={tenant.status === 'active' ? 'success' : 'default'}
-                          size="small"
-                        />
-                      </TableCell>
+
                       <TableCell align="right">
                         <IconButton
                           size="small"
@@ -441,7 +417,7 @@ const TenantsList = () => {
         <DialogContent>
           <DialogContentText>
             Are you sure you want to remove {selectedTenant?.first_name} {selectedTenant?.last_name} from {selectedTenant?.space_title || 'this space'}?
-            {selectedTenant?.status === 'active' && selectedTenant?.end_date && (
+            {selectedTenant?.is_deleted === false && selectedTenant?.end_date && (
               <Box component="span" sx={{ display: 'block', mt: 1, fontWeight: 'bold' }}>
                 Warning: This tenant has an active lease ending {new Date(selectedTenant.end_date).toLocaleDateString()}.
               </Box>

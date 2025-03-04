@@ -109,45 +109,6 @@ const TenantDetails = () => {
     setTabValue(newValue);
   };
 
-  const handleStatusChange = async () => {
-    if (!tenant) return;
-
-    try {
-      const newStatus = tenant.status === 'active' ? 'former' : 'active';
-
-      // Use apiService.tenants.update instead of api.put
-      const response = await apiService.tenants.update(tenantId, {
-        status: newStatus
-      });
-
-      if (response.data && response.data.tenant) {
-        // Update local state with the returned tenant data
-        setTenant(response.data.tenant);
-      } else {
-        // Fallback: update just the status if the API doesn't return the full tenant
-        setTenant({
-          ...tenant,
-          status: newStatus
-        });
-      }
-
-      setNotification({
-        open: true,
-        message: `Tenant status changed to ${newStatus}`,
-        severity: 'success'
-      });
-
-      setStatusDialogOpen(false);
-    } catch (error) {
-      console.error('Error updating tenant status:', error);
-      setNotification({
-        open: true,
-        message: 'Failed to update tenant status: ' + (error.message || 'Unknown error'),
-        severity: 'error'
-      });
-    }
-  };
-
   const handleDeleteTenant = async () => {
     try {
       // Use apiService.tenants.delete instead of api.delete
@@ -220,8 +181,8 @@ const TenantDetails = () => {
 
   if (hasValidDates) {
     daysUntilEnd = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
-    isEndingSoon = tenant.status === 'active' && daysUntilEnd <= 60 && daysUntilEnd > 0;
-    isOverdue = tenant.status === 'active' && daysUntilEnd < 0;
+    isEndingSoon = tenant.is_deleted === false && daysUntilEnd <= 60 && daysUntilEnd > 0;
+    isOverdue = tenant.is_deleted === false && daysUntilEnd < 0;
     leaseLength = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24 * 30)); // Approximate months
   }
 
@@ -248,11 +209,6 @@ const TenantDetails = () => {
                   {tenant.first_name} {tenant.last_name}
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <Chip
-                    label={tenant.status || 'active'}
-                    color={tenant.status === 'active' ? 'success' : 'default'}
-                    size="small"
-                  />
 
                   {isEndingSoon && (
                     <Chip
@@ -272,13 +228,6 @@ const TenantDetails = () => {
                 </Box>
               </Box>
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant="outlined"
-                  color={tenant.status === 'active' ? "error" : "success"}
-                  onClick={() => setStatusDialogOpen(true)}
-                >
-                  {tenant.status === 'active' ? 'Mark as Former' : 'Mark as Active'}
-                </Button>
                 <Button
                   variant="contained"
                   color="primary"
@@ -393,14 +342,6 @@ const TenantDetails = () => {
                   <Card sx={{ mb: 3 }}>
                     <CardContent>
                       <Grid container spacing={2}>
-                        <Grid item xs={6}>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            Status
-                          </Typography>
-                          <Typography variant="h6">
-                            {tenant.status === 'active' ? 'Active' : 'Former'}
-                          </Typography>
-                        </Grid>
                         <Grid item xs={6}>
                           <Typography variant="subtitle2" color="text.secondary">
                             Monthly Rent
@@ -543,7 +484,7 @@ const TenantDetails = () => {
                   </Typography>
                   <Card sx={{ mb: 3 }}>
                     <CardContent>
-                      {tenant.status === 'active' ? (
+                      {tenant.is_deleted === false ? (
                         <>
                           <Button
                             fullWidth
@@ -652,33 +593,6 @@ const TenantDetails = () => {
           </Paper>
         </Grid>
       </Grid>
-
-      {/* Status Change Dialog */}
-      <Dialog
-        open={statusDialogOpen}
-        onClose={() => setStatusDialogOpen(false)}
-      >
-        <DialogTitle>
-          {tenant.status === 'active' ? 'Mark as Former Tenant' : 'Reactivate Tenant'}
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {tenant.status === 'active'
-              ? 'This will mark the tenant as former and indicate they are no longer actively renting this space. Current lease information will be preserved for record-keeping purposes.'
-              : 'This will reactivate the tenant and mark them as currently renting this space. The existing lease information will remain unchanged.'}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setStatusDialogOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            color={tenant.status === 'active' ? "error" : "success"}
-            onClick={handleStatusChange}
-          >
-            {tenant.status === 'active' ? 'Mark as Former' : 'Reactivate'}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Delete Tenant Dialog */}
       <Dialog
