@@ -19,7 +19,9 @@ import TenantsList from './components/tenants/TenantsList';
 import TenantManagement from './components/tenants/TenantManagement';
 import AddTenant from './components/tenants/AddTenant';
 import TenantDetails from './components/tenants/TenantDetails';
+import EditTenant from './components/tenants/EditTenant';
 import SpaceManagement from './components/spaces/SpaceManagement';
+
 
 const theme = createTheme({
   palette: {
@@ -137,6 +139,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <TenantDetails />
+                </ProtectedRoute>
+              }
+            />
+            {/* Add this new route for editing tenants */}
+            <Route
+              path="/tenants/:tenantId/edit"
+              element={
+                <ProtectedRoute>
+                  <EditTenant />
                 </ProtectedRoute>
               }
             />

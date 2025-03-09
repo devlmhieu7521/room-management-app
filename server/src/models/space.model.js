@@ -60,7 +60,7 @@ class SpaceModel {
     // Enhanced query with tenant count
     const query = `
       SELECT s.*,
-             (SELECT COUNT(*) FROM tenants WHERE space_id = s.space_id AND status = 'active') AS tenant_count
+             (SELECT COUNT(*) FROM tenants WHERE space_id = s.space_id AND is_deleted = False) AS tenant_count
       FROM spaces s
       WHERE s.space_id = $1
     `;

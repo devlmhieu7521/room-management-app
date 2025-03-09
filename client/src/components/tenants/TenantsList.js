@@ -12,7 +12,6 @@ import {
   TableHead,
   TableRow,
   Button,
-  Chip,
   IconButton,
   TextField,
   InputAdornment,
@@ -265,10 +264,10 @@ const TenantsList = () => {
                 </TableRow>
               ) : (
                 sortedTenants.map((tenant) => {
-                  // Check if required dates exist to prevent errors
+                  // Calculate if lease is ending soon
                   const hasValidDates = tenant.start_date && tenant.end_date;
 
-                  // Calculate if lease is ending soon
+                  // Calculate lease status
                   let daysUntilEnd = 0;
                   let isEndingSoon = false;
                   let isOverdue = false;
@@ -382,9 +381,9 @@ const TenantsList = () => {
         <DialogContent>
           <DialogContentText>
             Are you sure you want to remove {selectedTenant?.first_name} {selectedTenant?.last_name} from {selectedTenant?.space_title || 'this space'}?
-            {selectedTenant && !selectedTenant.is_deleted && selectedTenant.end_date && (
+            {selectedTenant && selectedTenant.end_date && (
               <Box component="span" sx={{ display: 'block', mt: 1, fontWeight: 'bold' }}>
-                Warning: This tenant has an active lease ending {new Date(selectedTenant.end_date).toLocaleDateString()}.
+                Warning: This tenant has a lease ending {new Date(selectedTenant.end_date).toLocaleDateString()}.
               </Box>
             )}
           </DialogContentText>

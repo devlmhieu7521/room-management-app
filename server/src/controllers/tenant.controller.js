@@ -38,8 +38,11 @@ class TenantController {
         });
       }
 
-      // Create the tenant
-      const tenant = await TenantModel.create(tenantData);
+      // Create the tenant with is_deleted set to false by default
+      const tenant = await TenantModel.create({
+        ...tenantData,
+        is_deleted: false
+      });
 
       return res.status(201).json({
         success: true,
@@ -135,12 +138,11 @@ class TenantController {
 
       // Fetch only non-deleted tenants for the space
       const tenants = await TenantModel.findBySpaceId(spaceId);
-      const nonDeletedTenants = tenants.filter(tenant => !tenant.is_deleted);
 
       return res.status(200).json({
         success: true,
-        count: nonDeletedTenants.length,
-        tenants: nonDeletedTenants
+        count: tenants.length,
+        tenants
       });
     } catch (error) {
       console.error('Error fetching space tenants:', error);
@@ -176,10 +178,13 @@ class TenantController {
       const { tenantId } = req.params;
       const updateData = req.body;
 
+      console.log(`Updating tenant ${tenantId} with data:`, updateData);
+
       // Find the tenant
       const tenant = await TenantModel.findById(tenantId);
 
       if (!tenant) {
+        console.log(`Tenant not found with ID: ${tenantId}`);
         return res.status(404).json({
           success: false,
           message: 'Tenant not found'
@@ -190,15 +195,34 @@ class TenantController {
       const space = await SpaceModel.findById(tenant.space_id);
 
       if (!space || space.host_id !== req.user.id) {
+        console.log(`Authorization failed for tenant ${tenantId}. Host ID: ${req.user.id}, Space owner: ${space?.host_id}`);
         return res.status(403).json({
           success: false,
           message: 'Not authorized to update this tenant'
         });
       }
 
+      // Process numeric values to ensure they're stored as numbers
+      if (updateData.rent_amount) {
+        updateData.rent_amount = parseFloat(updateData.rent_amount);
+      }
+
+      if (updateData.security_deposit) {
+        updateData.security_deposit = parseFloat(updateData.security_deposit);
+      }
+
       // Update the tenant
       const updatedTenant = await TenantModel.update(tenantId, updateData);
 
+      if (!updatedTenant) {
+        console.log(`Update failed for tenant ${tenantId}`);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to update tenant'
+        });
+      }
+
+      console.log(`Tenant ${tenantId} updated successfully`);
       return res.status(200).json({
         success: true,
         message: 'Tenant updated successfully',
@@ -238,7 +262,7 @@ class TenantController {
         });
       }
 
-      // Delete the tenant
+      // Soft delete the tenant
       await TenantModel.delete(tenantId);
 
       return res.status(200).json({

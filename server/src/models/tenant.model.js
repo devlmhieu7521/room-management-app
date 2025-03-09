@@ -178,30 +178,13 @@ class TenantModel {
     }
   }
 
-  static async hardDelete(tenantId) {
-    // Only use this for actual removal from database if needed
-    const query = `
-      DELETE FROM tenants
-      WHERE tenant_id = $1
-      RETURNING *
-    `;
-
-    try {
-      const result = await db.query(query, [tenantId]);
-      return result.rows[0] || null;
-    } catch (error) {
-      console.error('Error hard deleting tenant:', error);
-      throw error;
-    }
-  }
-
   static async getTenantMetrics(hostId) {
     const query = `
       SELECT
         COUNT(*) AS total_tenants,
-        SUM(CASE WHEN is_deleted = false THEN rent_amount ELSE 0 END) AS total_monthly_rent,
+        SUM(CASE WHEN t.is_deleted = false THEN rent_amount ELSE 0 END) AS total_monthly_rent,
         SUM(CASE
-          WHEN is_deleted = false AND end_date <= (CURRENT_DATE + INTERVAL '30 days')
+          WHEN t.is_deleted = false AND end_date <= (CURRENT_DATE + INTERVAL '30 days')
           AND end_date >= CURRENT_DATE THEN 1
           ELSE 0 END) AS leases_ending_soon
       FROM tenants t

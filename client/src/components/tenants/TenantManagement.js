@@ -11,10 +11,8 @@ import {
   Button,
   CircularProgress,
   Alert,
-  Chip,
   Tabs,
   Tab,
-  Divider,
   Table,
   TableBody,
   TableCell,
@@ -22,7 +20,8 @@ import {
   TableHead,
   TableRow,
   TextField,
-  InputAdornment
+  InputAdornment,
+  Stack
 } from '@mui/material';
 import {
   People as PeopleIcon,
@@ -33,7 +32,8 @@ import {
   Warning as WarningIcon,
   Mail as MailIcon,
   Phone as PhoneIcon,
-  Assignment as AssignmentIcon
+  Assignment as AssignmentIcon,
+  Edit as EditIcon
 } from '@mui/icons-material';
 import apiService from '../../utils/api';
 
@@ -79,6 +79,7 @@ const TenantManagement = () => {
         // Fetch tenants data
         try {
           const tenantsResponse = await apiService.tenants.getAll();
+          console.log('Tenants response:', tenantsResponse);
           if (tenantsResponse.data && tenantsResponse.data.tenants) {
             setTenants(tenantsResponse.data.tenants);
           }
@@ -136,7 +137,7 @@ const TenantManagement = () => {
     });
 
     setMetrics({
-      total_tenants: tenantsList.length,
+      total_tenants: activeTenants.length,
       total_monthly_rent: activeTenants.reduce((sum, tenant) => sum + (tenant.rent_amount || 0), 0),
       leases_ending_soon: leasesEndingSoon.length
     });
@@ -165,7 +166,6 @@ const TenantManagement = () => {
 
   const getTenantsWithOverdueRent = () => {
     // In this version, we'll identify overdue rent by past due dates
-    // since there's no longer a status column
     const today = new Date();
     return tenants.filter(tenant => {
       if (tenant.is_deleted) return false;
@@ -198,13 +198,25 @@ const TenantManagement = () => {
       filtered = filtered.filter(tenant => {
         const fullName = `${tenant.first_name} ${tenant.last_name}`.toLowerCase();
         return fullName.includes(query) ||
-               tenant.email.toLowerCase().includes(query) ||
-               tenant.space_title.toLowerCase().includes(query) ||
+               (tenant.email && tenant.email.toLowerCase().includes(query)) ||
+               (tenant.space_title && tenant.space_title.toLowerCase().includes(query)) ||
                (tenant.phone_number && tenant.phone_number.includes(query));
       });
     }
 
     return filtered;
+  };
+
+  // Handler for viewing tenant details
+  const handleViewTenant = (tenantId) => {
+    console.log('Navigating to tenant details:', tenantId);
+    navigate(`/tenants/${tenantId}`);
+  };
+
+  // Handler for editing tenant
+  const handleEditTenant = (tenantId) => {
+    console.log('Navigating to edit tenant:', tenantId);
+    navigate(`/tenants/${tenantId}/edit`);
   };
 
   if (loading) {
@@ -316,7 +328,7 @@ const TenantManagement = () => {
                 variant="scrollable"
                 scrollButtons="auto"
               >
-                <Tab icon={<PeopleIcon />} label={`All Tenants (${tenants.length})`} />
+                <Tab icon={<PeopleIcon />} label={`All Tenants (${activeTenantCount})`} />
                 <Tab icon={<EventIcon />} label={`Leases Ending (${getTenantsWithLeaseEnding().length})`} />
                 <Tab icon={<WarningIcon />} label={`Rent Issues (${getTenantsWithOverdueRent().length})`} />
               </Tabs>
@@ -353,7 +365,7 @@ const TenantManagement = () => {
                   <TableBody>
                     {getFilteredTenants().length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} align="center">
+                        <TableCell colSpan={6} align="center">
                           <Box sx={{ py: 3 }}>
                             <Typography variant="subtitle1" gutterBottom>
                               No tenants found
@@ -441,20 +453,24 @@ const TenantManagement = () => {
                               </Box>
                             </TableCell>
                             <TableCell>
-                              <Chip
-                                label={tenant.is_deleted ? 'Inactive' : 'Active'}
-                                color={tenant.is_deleted ? 'default' : 'success'}
-                                size="small"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => navigate(`/tenants/${tenant.tenant_id}`)}
-                              >
-                                View
-                              </Button>
+                              <Stack direction="row" spacing={1}>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => handleViewTenant(tenant.tenant_id)}
+                                >
+                                  View
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="primary"
+                                  startIcon={<EditIcon />}
+                                  onClick={() => handleEditTenant(tenant.tenant_id)}
+                                >
+                                  Edit
+                                </Button>
+                              </Stack>
                             </TableCell>
                           </TableRow>
                         );

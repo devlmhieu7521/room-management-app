@@ -37,7 +37,8 @@ import {
   Delete as DeleteIcon,
   Assignment as LeaseIcon,
   AccessTime as TimeIcon,
-  Notes as NotesIcon
+  Notes as NotesIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import apiService from '../../utils/api';
 
@@ -68,7 +69,6 @@ const TenantDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tabValue, setTabValue] = useState(0);
-  // No longer using status dialog since we're not showing tenant status
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [notification, setNotification] = useState({
     open: false,
@@ -109,8 +109,6 @@ const TenantDetails = () => {
     setTabValue(newValue);
   };
 
-  // No longer using status toggle functionality
-
   const handleDeleteTenant = async () => {
     try {
       // Use apiService.tenants.delete instead of api.delete
@@ -143,6 +141,10 @@ const TenantDetails = () => {
       ...notification,
       open: false
     });
+  };
+
+  const handleBack = () => {
+    navigate('/tenant-management');
   };
 
   if (loading) {
@@ -196,8 +198,12 @@ const TenantDetails = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ mb: 3 }}>
-        <Button variant="outlined" onClick={() => navigate('/tenants')}>
-          Back to Tenants
+        <Button
+          variant="outlined"
+          startIcon={<ArrowBackIcon />}
+          onClick={handleBack}
+        >
+          Back to Tenant Management
         </Button>
       </Box>
 
@@ -228,40 +234,7 @@ const TenantDetails = () => {
                   )}
                 </Box>
               </Box>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<EditIcon />}
-                  onClick={() => navigate(`/tenants/${tenantId}/edit`)}
-                >
-                  Edit Tenant
-                </Button>
-              </Box>
-              <Box  sx={{display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Box>
-                  <Chip
-                    label={tenant.is_deleted ? 'Inactive' : 'Active'}
-                    color={tenant.is_deleted ? 'default' : 'success'}
-                    size="small"
-                  />
-                  {isEndingSoon && (
-                    <Chip
-                      label={`Lease ending in ${daysUntilEnd} days`}
-                      color="warning"
-                      size="small"
-                    />
-                  )}
 
-                  {isOverdue && (
-                    <Chip
-                      label={`Lease ended ${-daysUntilEnd} days ago`}
-                      color="error"
-                      size="small"
-                    />
-                  )}
-                </Box>
-              </Box>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button
                   variant="contained"
@@ -420,7 +393,7 @@ const TenantDetails = () => {
                   <Typography variant="h6" gutterBottom>
                     Quick Actions
                   </Typography>
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     <Button
                       variant="outlined"
                       startIcon={<EditIcon />}
