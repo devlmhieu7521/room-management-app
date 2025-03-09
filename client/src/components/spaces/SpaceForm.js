@@ -15,23 +15,22 @@ import {
   Divider,
   Card,
   CardContent,
-  CardMedia,
-  Chip,
   FormHelperText,
-  Tooltip
+  Tooltip,
+  FormControlLabel,
+  Switch,
+  InputAdornment
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
-  CloudUpload as CloudUploadIcon,
   Save as SaveIcon,
-  Delete as DeleteIcon,
   Home as HomeIcon,
   LocationOn as LocationOnIcon,
-  Description as DescriptionIcon,
-  Warning as WarningIcon
+  Description as DescriptionIcon
 } from '@mui/icons-material';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import apiService from '../../utils/api';
+import VietnameseLocationSelector from './VietnameseLocationSelector';
 
 // Space type options
 const spaceTypes = [
@@ -59,6 +58,9 @@ const SpaceForm = () => {
   // Form validation state
   const [errors, setErrors] = useState({});
 
+  // Toggle for Vietnamese address format
+  const [useVietnameseFormat, setUseVietnameseFormat] = useState(true);
+
   // Default form data
   const defaultFormData = {
     title: '',
@@ -69,8 +71,12 @@ const SpaceForm = () => {
     city: '',
     state: '',
     zip_code: '',
-    country: 'USA',
-    is_active: true
+    country: 'Vietnam',
+    is_active: true,
+    // Vietnamese location specific fields
+    province: null,
+    district: null,
+    ward: null
   };
 
   // State hooks
@@ -91,6 +97,12 @@ const SpaceForm = () => {
 
     // Compare each field that's editable
     return Object.keys(formData).some(key => {
+      // Skip Vietnamese-specific fields in this simple comparison if they're objects
+      if (['province', 'district', 'ward'].includes(key) &&
+          (formData[key] === null || typeof formData[key] === 'object')) {
+        return false;
+      }
+
       // Special handling for boolean values that might be strings
       if (key === 'is_active') {
         const formValue = formData[key] === true || formData[key] === 'true';
@@ -101,6 +113,45 @@ const SpaceForm = () => {
       // Normal comparison for other fields
       return formData[key] !== originalData[key];
     });
+  };
+
+  // Extract Vietnamese location from existing data (for edit mode)
+  const extractVietnameseLocation = (spaceData) => {
+    if (!spaceData) return {};
+
+    // These values might be stored in a variety of ways depending on implementation:
+    // 1. As JSON in a field
+    // 2. As separate fields
+    // 3. Parsed from city, state fields
+
+    // This is a simplified approach - adjust based on actual data structure
+    const result = {
+      province: null,
+      district: null,
+      ward: null
+    };
+
+    // Option 1: If we have dedicated fields already
+    if (spaceData.province) result.province = spaceData.province;
+    if (spaceData.district) result.district = spaceData.district;
+    if (spaceData.ward) result.ward = spaceData.ward;
+
+    // Option 2: If location data is stored as JSON in a field
+    if (spaceData.location_data) {
+      try {
+        const locationData = typeof spaceData.location_data === 'string'
+          ? JSON.parse(spaceData.location_data)
+          : spaceData.location_data;
+
+        if (locationData.province) result.province = locationData.province;
+        if (locationData.district) result.district = locationData.district;
+        if (locationData.ward) result.ward = locationData.ward;
+      } catch (e) {
+        console.error('Error parsing location data:', e);
+      }
+    }
+
+    return result;
   };
 
   // Fetch space data if in edit mode
@@ -114,15 +165,39 @@ const SpaceForm = () => {
           // If we have space data in location state, use it
           if (location.state && location.state.spaceData) {
             const spaceData = location.state.spaceData;
-            setFormData(spaceData);
+            const vietnameseLocation = extractVietnameseLocation(spaceData);
+
+            setFormData({
+              ...spaceData,
+              ...vietnameseLocation
+            });
             setOriginalData(spaceData);
+
+            // If this is a Vietnamese address
+            if (spaceData.country === 'Vietnam' || vietnameseLocation.province) {
+              setUseVietnameseFormat(true);
+            } else {
+              setUseVietnameseFormat(false);
+            }
           } else {
             // Otherwise fetch from API
             const response = await apiService.spaces.getById(spaceId);
             if (response.data && response.data.space) {
               const spaceData = response.data.space;
-              setFormData(spaceData);
+              const vietnameseLocation = extractVietnameseLocation(spaceData);
+
+              setFormData({
+                ...spaceData,
+                ...vietnameseLocation
+              });
               setOriginalData(spaceData);
+
+              // If this is a Vietnamese address
+              if (spaceData.country === 'Vietnam' || vietnameseLocation.province) {
+                setUseVietnameseFormat(true);
+              } else {
+                setUseVietnameseFormat(false);
+              }
             } else {
               setError('Could not load space details');
             }
@@ -157,26 +232,100 @@ const SpaceForm = () => {
     });
   };
 
+  // Handle Vietnamese location change
+  const handleLocationChange = (locationData) => {
+    // Clear validation errors
+    const locationErrors = { ...errors };
+    delete locationErrors.province;
+    delete locationErrors.district;
+    delete locationErrors.ward;
+    delete locationErrors.city;
+    delete locationErrors.state;
+    setErrors(locationErrors);
+
+    // Update form data with Vietnamese location
+    setFormData({
+      ...formData,
+      province: locationData.province,
+      district: locationData.district,
+      ward: locationData.ward,
+      // Update traditional fields for backward compatibility
+      city: locationData.province ? locationData.province.name : '',
+      state: locationData.district ? locationData.district.name : '',
+    });
+  };
+
+  // Toggle between Vietnamese and international address format
+  const handleFormatToggle = () => {
+    setUseVietnameseFormat(!useVietnameseFormat);
+
+    // Reset relevant validation errors
+    const updatedErrors = { ...errors };
+    delete updatedErrors.city;
+    delete updatedErrors.state;
+    delete updatedErrors.province;
+    delete updatedErrors.district;
+    delete updatedErrors.ward;
+    setErrors(updatedErrors);
+
+    // If switching to international format, copy province/district to city/state if needed
+    if (useVietnameseFormat) {
+      // Convert from Vietnamese format to international
+      const updatedFormData = { ...formData };
+
+      if (formData.province && !formData.city) {
+        updatedFormData.city = formData.province.name || '';
+      }
+
+      if (formData.district && !formData.state) {
+        updatedFormData.state = formData.district.name || '';
+      }
+
+      setFormData(updatedFormData);
+    }
+  };
+
   // Form validation
   const validateForm = () => {
     const newErrors = {};
 
-    // Required fields
+    // Required fields for all forms
     const requiredFields = [
       'title',
       'space_type',
       'capacity',
       'street_address',
-      'city',
-      'state',
-      'zip_code'
     ];
 
     requiredFields.forEach(field => {
-      if (!formData[field] || formData[field].trim() === '') {
+      if (!formData[field] || (typeof formData[field] === 'string' && formData[field].trim() === '')) {
         newErrors[field] = 'This field is required';
       }
     });
+
+    // Validate Vietnamese format fields
+    if (useVietnameseFormat) {
+      if (!formData.province) {
+        newErrors.province = 'Province is required';
+      }
+      if (!formData.district) {
+        newErrors.district = 'District is required';
+      }
+      if (!formData.ward) {
+        newErrors.ward = 'Ward is required';
+      }
+    } else {
+      // Validate international format fields
+      if (!formData.city || formData.city.trim() === '') {
+        newErrors.city = 'City is required';
+      }
+      if (!formData.state || formData.state.trim() === '') {
+        newErrors.state = 'State/Province is required';
+      }
+      if (!formData.zip_code || formData.zip_code.trim() === '') {
+        newErrors.zip_code = 'ZIP/Postal code is required';
+      }
+    }
 
     // Capacity validation (must be a positive number)
     if (formData.capacity) {
@@ -186,13 +335,56 @@ const SpaceForm = () => {
       }
     }
 
-    // ZIP code validation (basic format check)
-    if (formData.zip_code && !/^\d{5}(-\d{4})?$/.test(formData.zip_code)) {
-      newErrors.zip_code = 'Enter a valid ZIP code (e.g., 12345 or 12345-6789)';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Prepare data for API submission
+  const prepareSubmissionData = () => {
+    // Process capacity value to ensure it's a number
+    const processedData = {
+      ...formData,
+      capacity: parseInt(formData.capacity, 10)
+    };
+
+    // Process boolean fields that might be strings
+    if (isEditMode && (processedData.is_active === 'true' || processedData.is_active === 'false')) {
+      processedData.is_active = processedData.is_active === 'true';
+    }
+
+    // For Vietnamese format, ensure we have the right fields
+    if (useVietnameseFormat) {
+      // Set country explicitly for Vietnamese addresses
+      processedData.country = 'Vietnam';
+
+      // Generate a formatted postal code if using Vietnamese format
+      if (processedData.province && processedData.district) {
+        processedData.zip_code = `${processedData.province.code}${processedData.district.code}`;
+      }
+
+      // Format the address for storage & display
+      const provinceName = processedData.province ? processedData.province.name : '';
+      const districtName = processedData.district ? processedData.district.name : '';
+      const wardName = processedData.ward ? processedData.ward.name : '';
+
+      // Store complete location for Vietnamese addresses
+      processedData.location_data = JSON.stringify({
+        province: processedData.province,
+        district: processedData.district,
+        ward: processedData.ward
+      });
+
+      // Update city and state for backward compatibility
+      processedData.city = provinceName;
+      processedData.state = districtName;
+
+      // Create a formatted full address
+      if (!processedData.full_address && wardName && districtName && provinceName) {
+        processedData.full_address = `${processedData.street_address}, ${wardName}, ${districtName}, ${provinceName}, Vietnam`;
+      }
+    }
+
+    return processedData;
   };
 
   // Form submission handler
@@ -213,17 +405,7 @@ const SpaceForm = () => {
     setError('');
 
     try {
-      // Process capacity value to ensure it's a number
-      const processedData = {
-        ...formData,
-        capacity: parseInt(formData.capacity, 10)
-      };
-
-      // Process boolean fields that might be strings
-      if (isEditMode && (processedData.is_active === 'true' || processedData.is_active === 'false')) {
-        processedData.is_active = processedData.is_active === 'true';
-      }
-
+      const processedData = prepareSubmissionData();
       let response;
 
       // If editing, update the space; otherwise create new
@@ -383,11 +565,23 @@ const SpaceForm = () => {
 
             {/* Location Information Section */}
             <Grid item xs={12} sx={{ mt: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <LocationOnIcon color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6" component="h2">
-                  Location
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <LocationOnIcon color="primary" sx={{ mr: 1 }} />
+                  <Typography variant="h6" component="h2">
+                    Location
+                  </Typography>
+                </Box>
+
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={useVietnameseFormat}
+                      onChange={handleFormatToggle}
+                    />
+                  }
+                  label="Vietnamese Address Format"
+                />
               </Box>
               <Divider sx={{ mb: 3 }} />
             </Grid>
@@ -401,61 +595,84 @@ const SpaceForm = () => {
                 value={formData.street_address || ''}
                 onChange={handleChange}
                 error={!!errors.street_address}
-                helperText={errors.street_address || "Full street address of the space"}
+                helperText={errors.street_address || "Building number, street, apartment/unit (if applicable)"}
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="City"
-                name="city"
-                value={formData.city || ''}
-                onChange={handleChange}
-                error={!!errors.city}
-                helperText={errors.city}
-              />
-            </Grid>
+            {useVietnameseFormat ? (
+              // Vietnamese Location Selector (Province, District, Ward)
+              <Grid item xs={12}>
+                <VietnameseLocationSelector
+                  value={{
+                    province: formData.province,
+                    district: formData.district,
+                    ward: formData.ward
+                  }}
+                  onChange={handleLocationChange}
+                  errors={{
+                    province: errors.province,
+                    district: errors.district,
+                    ward: errors.ward
+                  }}
+                  disabled={saving}
+                />
+              </Grid>
+            ) : (
+              // International Format (City, State, ZIP, Country)
+              <>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    label="City"
+                    name="city"
+                    value={formData.city || ''}
+                    onChange={handleChange}
+                    error={!!errors.city}
+                    helperText={errors.city}
+                  />
+                </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="State/Province"
-                name="state"
-                value={formData.state || ''}
-                onChange={handleChange}
-                error={!!errors.state}
-                helperText={errors.state}
-              />
-            </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    label="State/Province"
+                    name="state"
+                    value={formData.state || ''}
+                    onChange={handleChange}
+                    error={!!errors.state}
+                    helperText={errors.state}
+                  />
+                </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="ZIP/Postal Code"
-                name="zip_code"
-                value={formData.zip_code || ''}
-                onChange={handleChange}
-                error={!!errors.zip_code}
-                helperText={errors.zip_code}
-              />
-            </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    label="ZIP/Postal Code"
+                    name="zip_code"
+                    value={formData.zip_code || ''}
+                    onChange={handleChange}
+                    error={!!errors.zip_code}
+                    helperText={errors.zip_code}
+                  />
+                </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="Country"
-                name="country"
-                value={formData.country || ''}
-                onChange={handleChange}
-                error={!!errors.country}
-                helperText={errors.country}
-              />
-            </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    label="Country"
+                    name="country"
+                    value={formData.country || ''}
+                    onChange={handleChange}
+                    error={!!errors.country}
+                    helperText={errors.country}
+                  />
+                </Grid>
+              </>
+            )}
 
             {/* Visibility Setting (only in edit mode) */}
             {isEditMode && (
