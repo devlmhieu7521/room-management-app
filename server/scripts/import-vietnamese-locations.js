@@ -1,6 +1,7 @@
 // server/scripts/import-vietnamese-locations.js
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 const { Pool } = require('pg');
 const dotenv = require('dotenv');
 
@@ -16,182 +17,37 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'roommanagement'
 });
 
+// Source API URLs
+const PROVINCES_API_URL = 'https://provinces.open-api.vn/api/p/';
+const DISTRICTS_API_URL = 'https://provinces.open-api.vn/api/d/';
+const WARDS_API_URL = 'https://provinces.open-api.vn/api/w/';
+
 /**
- * Import location data from JSON files or use hardcoded data if files aren't available
+ * Fetch data from a given API endpoint
+ * @param {string} url - The API URL to fetch from
+ * @returns {Promise<Array>} - The fetched data
  */
-async function importLocationData() {
+async function fetchFromAPI(url) {
   try {
-    console.log('Starting Vietnamese location data import...');
-
-    // Check if the database tables exist, create them if needed
-    await createTablesIfNotExist();
-
-    // Define file paths
-    const provincesFilePath = path.join(__dirname, 'data', 'provinces.json');
-    const districtsFilePath = path.join(__dirname, 'data', 'districts.json');
-    const wardsFilePath = path.join(__dirname, 'data', 'wards.json');
-
-    // Data variables
-    let provinces = [];
-    let districts = [];
-    let wards = [];
-
-    // Try to read data from files
-    try {
-      if (fs.existsSync(provincesFilePath)) {
-        // Read and parse the provinces file
-        const provincesRawData = fs.readFileSync(provincesFilePath, 'utf8');
-        provinces = JSON.parse(provincesRawData);
-        console.log(`Read provinces from file: ${provinces.length} provinces found`);
-      } else {
-        console.warn(`Provinces file not found at: ${provincesFilePath}`);
-        provinces = getHardcodedProvinces();
-        console.log(`Using hardcoded provinces data: ${provinces.length} provinces`);
-      }
-
-      if (fs.existsSync(districtsFilePath)) {
-        // Read and parse the districts file
-        const districtsRawData = fs.readFileSync(districtsFilePath, 'utf8');
-        districts = JSON.parse(districtsRawData);
-        console.log(`Read districts from file: ${districts.length} districts found`);
-      } else {
-        console.warn(`Districts file not found at: ${districtsFilePath}`);
-        districts = getHardcodedDistricts();
-        console.log(`Using hardcoded districts data: ${districts.length} districts`);
-      }
-
-      if (fs.existsSync(wardsFilePath)) {
-        // Read and parse the wards file
-        const wardsRawData = fs.readFileSync(wardsFilePath, 'utf8');
-        wards = JSON.parse(wardsRawData);
-        console.log(`Read wards from file: ${wards.length} wards found`);
-      } else {
-        console.warn(`Wards file not found at: ${wardsFilePath}`);
-        wards = getHardcodedWards();
-        console.log(`Using hardcoded wards data: ${wards.length} wards`);
-      }
-    } catch (fileError) {
-      console.error('Error reading or parsing data files:', fileError);
-      console.log('Falling back to hardcoded data...');
-      provinces = getHardcodedProvinces();
-      districts = getHardcodedDistricts();
-      wards = getHardcodedWards();
+    console.log(`Fetching data from ${url}`);
+    const response = await axios.get(url, { timeout: 10000 });
+    if (Array.isArray(response.data)) {
+      return response.data;
     }
-
-    // Check if we have valid data
-    if (!Array.isArray(provinces) || provinces.length === 0) {
-      console.error('Provinces data is not a valid array or is empty');
-      provinces = getHardcodedProvinces();
-    }
-
-    if (!Array.isArray(districts) || districts.length === 0) {
-      console.error('Districts data is not a valid array or is empty');
-      districts = getHardcodedDistricts();
-    }
-
-    if (!Array.isArray(wards) || wards.length === 0) {
-      console.error('Wards data is not a valid array or is empty');
-      wards = getHardcodedWards();
-    }
-
-    // Begin a transaction
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      // Import provinces
-      console.log(`Importing ${provinces.length} provinces...`);
-      for (const province of provinces) {
-        await client.query(`
-          INSERT INTO vn_provinces (code, name, full_name, code_name)
-          VALUES ($1, $2, $3, $4)
-          ON CONFLICT (code) DO UPDATE SET
-            name = EXCLUDED.name,
-            full_name = EXCLUDED.full_name,
-            code_name = EXCLUDED.code_name,
-            updated_at = CURRENT_TIMESTAMP
-        `, [
-          province.code,
-          province.name,
-          province.full_name || province.name,
-          province.code_name || slugify(province.name)
-        ]);
-      }
-      console.log('Provinces imported successfully.');
-
-      // Import districts
-      console.log(`Importing ${districts.length} districts...`);
-      for (const district of districts) {
-        await client.query(`
-          INSERT INTO vn_districts (code, name, full_name, code_name, province_code)
-          VALUES ($1, $2, $3, $4, $5)
-          ON CONFLICT (code) DO UPDATE SET
-            name = EXCLUDED.name,
-            full_name = EXCLUDED.full_name,
-            code_name = EXCLUDED.code_name,
-            province_code = EXCLUDED.province_code,
-            updated_at = CURRENT_TIMESTAMP
-        `, [
-          district.code,
-          district.name,
-          district.full_name || district.name,
-          district.code_name || slugify(district.name),
-          district.province_code
-        ]);
-      }
-      console.log('Districts imported successfully.');
-
-      // Import wards
-      console.log(`Importing ${wards.length} wards...`);
-      const batchSize = 100;
-      for (let i = 0; i < wards.length; i += batchSize) {
-        const batch = wards.slice(i, i + batchSize);
-        console.log(`Importing wards batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(wards.length / batchSize)}...`);
-
-        for (const ward of batch) {
-          await client.query(`
-            INSERT INTO vn_wards (code, name, full_name, code_name, district_code)
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (code) DO UPDATE SET
-              name = EXCLUDED.name,
-              full_name = EXCLUDED.full_name,
-              code_name = EXCLUDED.code_name,
-              district_code = EXCLUDED.district_code,
-              updated_at = CURRENT_TIMESTAMP
-          `, [
-            ward.code,
-            ward.name,
-            ward.full_name || ward.name,
-            ward.code_name || slugify(ward.name),
-            ward.district_code
-          ]);
-        }
-      }
-      console.log('Wards imported successfully.');
-
-      // Commit the transaction
-      await client.query('COMMIT');
-      console.log('Location data import completed successfully.');
-    } catch (error) {
-      await client.query('ROLLBACK');
-      console.error('Error importing location data:', error);
-      throw error;
-    } finally {
-      client.release();
-    }
+    return [];
   } catch (error) {
-    console.error('Error in import process:', error);
-  } finally {
-    await pool.end();
+    console.error(`Error fetching from ${url}:`, error.message);
+    return [];
   }
 }
 
 /**
- * Create the database tables if they don't exist
+ * Create necessary database tables for Vietnamese locations
  */
-async function createTablesIfNotExist() {
+async function createTables() {
   const client = await pool.connect();
   try {
+    console.log('Creating necessary database tables...');
     await client.query(`
       -- Provinces/Cities Table
       CREATE TABLE IF NOT EXISTS vn_provinces (
@@ -214,7 +70,7 @@ async function createTablesIfNotExist() {
         full_name VARCHAR(100),
         full_name_en VARCHAR(100),
         code_name VARCHAR(100),
-        province_code VARCHAR(10) NOT NULL REFERENCES vn_provinces(code),
+        province_code VARCHAR(10) REFERENCES vn_provinces(code),
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -228,7 +84,7 @@ async function createTablesIfNotExist() {
         full_name VARCHAR(100),
         full_name_en VARCHAR(100),
         code_name VARCHAR(100),
-        district_code VARCHAR(10) NOT NULL REFERENCES vn_districts(code),
+        district_code VARCHAR(10) REFERENCES vn_districts(code),
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -238,9 +94,9 @@ async function createTablesIfNotExist() {
       CREATE INDEX IF NOT EXISTS idx_districts_province_code ON vn_districts(province_code);
       CREATE INDEX IF NOT EXISTS idx_wards_district_code ON vn_wards(district_code);
     `);
-    console.log('Database tables created/verified successfully.');
+    console.log('Tables created successfully.');
   } catch (error) {
-    console.error('Error creating database tables:', error);
+    console.error('Error creating tables:', error);
     throw error;
   } finally {
     client.release();
@@ -248,72 +104,231 @@ async function createTablesIfNotExist() {
 }
 
 /**
- * Simple slugify function to convert text to URL-friendly format
- * @param {string} text - Text to slugify
- * @returns {string} - Slugified text
+ * Import provinces data into the database
+ * @param {Array} provinces - The provinces data to import
  */
-function slugify(text) {
-  return text
-    .normalize('NFD') // normalize diacritics
-    .replace(/[\u0300-\u036f]/g, '') // remove diacritics
-    .toLowerCase()
-    .replace(/[đ]/g, 'd')
-    .replace(/[^a-z0-9\s-]/g, '') // remove non-alphanumeric characters
-    .replace(/[\s-]+/g, '-') // replace spaces and hyphens with a single hyphen
-    .replace(/^-+|-+$/g, ''); // remove leading and trailing hyphens
+async function importProvinces(provinces) {
+  if (!provinces || provinces.length === 0) {
+    console.error('No provinces data to import.');
+    return;
+  }
+
+  const client = await pool.connect();
+  try {
+    console.log(`Importing ${provinces.length} provinces...`);
+
+    // Prepare batch query for provinces
+    const values = provinces.map(p =>
+      `('${p.code}', '${escapeSql(p.name)}', '${escapeSql(p.name_en || '')}', '${escapeSql(p.full_name || p.name)}', '${escapeSql(p.full_name_en || '')}', '${escapeSql(p.code_name || '')}')`
+    ).join(',');
+
+    const query = `
+      INSERT INTO vn_provinces (code, name, name_en, full_name, full_name_en, code_name)
+      VALUES ${values}
+      ON CONFLICT (code) DO UPDATE SET
+        name = EXCLUDED.name,
+        name_en = EXCLUDED.name_en,
+        full_name = EXCLUDED.full_name,
+        full_name_en = EXCLUDED.full_name_en,
+        code_name = EXCLUDED.code_name,
+        updated_at = CURRENT_TIMESTAMP
+    `;
+
+    await client.query(query);
+    console.log('Provinces imported successfully.');
+  } catch (error) {
+    console.error('Error importing provinces:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**
- * Get hardcoded provinces data
- * @returns {Array} - Array of province objects
+ * Import districts data into the database
+ * @param {Array} districts - The districts data to import
  */
-function getHardcodedProvinces() {
-  return [
-    { code: "01", name: "Hà Nội", full_name: "Thành phố Hà Nội", code_name: "ha-noi" },
-    { code: "79", name: "Hồ Chí Minh", full_name: "Thành phố Hồ Chí Minh", code_name: "ho-chi-minh" },
-    { code: "48", name: "Đà Nẵng", full_name: "Thành phố Đà Nẵng", code_name: "da-nang" },
-    { code: "92", name: "Cần Thơ", full_name: "Thành phố Cần Thơ", code_name: "can-tho" },
-    { code: "31", name: "Hải Phòng", full_name: "Thành phố Hải Phòng", code_name: "hai-phong" }
-  ];
+async function importDistricts(districts) {
+  if (!districts || districts.length === 0) {
+    console.error('No districts data to import.');
+    return;
+  }
+
+  const client = await pool.connect();
+  try {
+    console.log(`Importing ${districts.length} districts...`);
+
+    // Process districts in batches to avoid query size limits
+    const batchSize = 100;
+    for (let i = 0; i < districts.length; i += batchSize) {
+      const batch = districts.slice(i, i + batchSize);
+      console.log(`Processing district batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(districts.length / batchSize)}`);
+
+      const values = batch.map(d =>
+        `('${d.code}', '${escapeSql(d.name)}', '${escapeSql(d.name_en || '')}', '${escapeSql(d.full_name || d.name)}', '${escapeSql(d.full_name_en || '')}', '${escapeSql(d.code_name || '')}', '${d.province_code}')`
+      ).join(',');
+
+      const query = `
+        INSERT INTO vn_districts (code, name, name_en, full_name, full_name_en, code_name, province_code)
+        VALUES ${values}
+        ON CONFLICT (code) DO UPDATE SET
+          name = EXCLUDED.name,
+          name_en = EXCLUDED.name_en,
+          full_name = EXCLUDED.full_name,
+          full_name_en = EXCLUDED.full_name_en,
+          code_name = EXCLUDED.code_name,
+          province_code = EXCLUDED.province_code,
+          updated_at = CURRENT_TIMESTAMP
+      `;
+
+      await client.query(query);
+    }
+
+    console.log('Districts imported successfully.');
+  } catch (error) {
+    console.error('Error importing districts:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**
- * Get hardcoded districts data
- * @returns {Array} - Array of district objects
+ * Import wards data into the database
+ * @param {Array} wards - The wards data to import
  */
-function getHardcodedDistricts() {
-  return [
-    // Hanoi districts
-    { code: "001", name: "Ba Đình", full_name: "Quận Ba Đình", province_code: "01", code_name: "ba-dinh" },
-    { code: "002", name: "Hoàn Kiếm", full_name: "Quận Hoàn Kiếm", province_code: "01", code_name: "hoan-kiem" },
-    { code: "003", name: "Tây Hồ", full_name: "Quận Tây Hồ", province_code: "01", code_name: "tay-ho" },
+async function importWards(wards) {
+  if (!wards || wards.length === 0) {
+    console.error('No wards data to import.');
+    return;
+  }
 
-    // Ho Chi Minh districts
-    { code: "760", name: "Quận 1", full_name: "Quận 1", province_code: "79", code_name: "quan-1" },
-    { code: "761", name: "Quận 12", full_name: "Quận 12", province_code: "79", code_name: "quan-12" },
-    { code: "762", name: "Thủ Đức", full_name: "Thành phố Thủ Đức", province_code: "79", code_name: "thu-duc" },
+  const client = await pool.connect();
+  try {
+    console.log(`Importing ${wards.length} wards...`);
 
-    // Da Nang districts
-    { code: "490", name: "Liên Chiểu", full_name: "Quận Liên Chiểu", province_code: "48", code_name: "lien-chieu" },
-    { code: "491", name: "Thanh Khê", full_name: "Quận Thanh Khê", province_code: "48", code_name: "thanh-khe" }
-  ];
+    // Process wards in smaller batches due to potentially large dataset
+    const batchSize = 50;
+    for (let i = 0; i < wards.length; i += batchSize) {
+      const batch = wards.slice(i, i + batchSize);
+      console.log(`Processing ward batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(wards.length / batchSize)}`);
+
+      // Insert each ward separately to handle potential errors better
+      for (const ward of batch) {
+        try {
+          const query = `
+            INSERT INTO vn_wards (code, name, name_en, full_name, full_name_en, code_name, district_code)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (code) DO UPDATE SET
+              name = EXCLUDED.name,
+              name_en = EXCLUDED.name_en,
+              full_name = EXCLUDED.full_name,
+              full_name_en = EXCLUDED.full_name_en,
+              code_name = EXCLUDED.code_name,
+              district_code = EXCLUDED.district_code,
+              updated_at = CURRENT_TIMESTAMP
+          `;
+
+          await client.query(query, [
+            ward.code,
+            ward.name,
+            ward.name_en || '',
+            ward.full_name || ward.name,
+            ward.full_name_en || '',
+            ward.code_name || '',
+            ward.district_code
+          ]);
+        } catch (error) {
+          console.error(`Error importing ward ${ward.code}:`, error.message);
+          // Continue with next ward
+        }
+      }
+    }
+
+    console.log('Wards imported successfully.');
+  } catch (error) {
+    console.error('Error importing wards:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**
- * Get hardcoded wards data
- * @returns {Array} - Array of ward objects
+ * Escape SQL string values to prevent SQL injection
+ * @param {string} str - String to escape
+ * @returns {string} - Escaped string
  */
-function getHardcodedWards() {
-  return [
-    // Some wards in District 1, HCMC
-    { code: "26734", name: "Bến Nghé", full_name: "Phường Bến Nghé", district_code: "760", code_name: "ben-nghe" },
-    { code: "26737", name: "Bến Thành", full_name: "Phường Bến Thành", district_code: "760", code_name: "ben-thanh" },
+function escapeSql(str) {
+  if (!str) return '';
+  return str.replace(/'/g, "''");
+}
 
-    // Some wards in Ba Dinh, Hanoi
-    { code: "00001", name: "Phúc Xá", full_name: "Phường Phúc Xá", district_code: "001", code_name: "phuc-xa" },
-    { code: "00004", name: "Trúc Bạch", full_name: "Phường Trúc Bạch", district_code: "001", code_name: "truc-bach" }
-  ];
+/**
+ * Save fetched data to JSON files for backup
+ * @param {string} dataType - The type of data (provinces, districts, wards)
+ * @param {Array} data - The data to save
+ */
+function saveToFile(dataType, data) {
+  try {
+    if (!fs.existsSync(path.join(__dirname, 'data'))) {
+      fs.mkdirSync(path.join(__dirname, 'data'));
+    }
+
+    const filePath = path.join(__dirname, 'data', `${dataType}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    console.log(`Saved ${dataType} data to ${filePath}`);
+  } catch (error) {
+    console.error(`Error saving ${dataType} data to file:`, error);
+  }
+}
+
+/**
+ * Main function to orchestrate the import process
+ */
+async function importVietnameseLocations() {
+  try {
+    console.log('Starting Vietnamese location data import...');
+
+    // Create database tables
+    await createTables();
+
+    // Fetch and import provinces
+    const provinces = await fetchFromAPI(PROVINCES_API_URL);
+    if (provinces.length > 0) {
+      saveToFile('provinces', provinces);
+      await importProvinces(provinces);
+    } else {
+      throw new Error('Failed to fetch provinces data. Import aborted.');
+    }
+
+    // Fetch and import districts
+    const districts = await fetchFromAPI(DISTRICTS_API_URL);
+    if (districts.length > 0) {
+      saveToFile('districts', districts);
+      await importDistricts(districts);
+    } else {
+      console.warn('No districts data fetched. Skipping districts import.');
+    }
+
+    // Fetch and import wards
+    const wards = await fetchFromAPI(WARDS_API_URL);
+    if (wards.length > 0) {
+      saveToFile('wards', wards);
+      await importWards(wards);
+    } else {
+      console.warn('No wards data fetched. Skipping wards import.');
+    }
+
+    console.log('Vietnamese location data import completed successfully!');
+  } catch (error) {
+    console.error('Error during import process:', error);
+  } finally {
+    // Close the database pool
+    await pool.end();
+    console.log('Database connection closed.');
+  }
 }
 
 // Run the import function
-importLocationData().catch(console.error);
+importVietnameseLocations().catch(console.error);

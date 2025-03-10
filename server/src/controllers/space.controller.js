@@ -123,7 +123,11 @@ class SpaceController {
   static async updateSpace(req, res) {
     try {
       const { spaceId } = req.params;
-      const updateData = req.body;
+      const rawUpdateData = req.body;
+
+      // Log the incoming data to diagnose issues
+      console.log('Update request for space:', spaceId);
+      console.log('Raw update data:', JSON.stringify(rawUpdateData, null, 2));
 
       // First check if space exists and belongs to this host
       const existingSpace = await SpaceModel.findById(spaceId);
@@ -143,13 +147,38 @@ class SpaceController {
         });
       }
 
+      // Filter the update data to only include valid column names that exist in the database
+      const validColumns = [
+        'title', 'description', 'space_type', 'capacity',
+        'street_address', 'city', 'state', 'zip_code', 'country',
+        'is_active', 'latitude', 'longitude'
+      ];
+
+      const updateData = {};
+      validColumns.forEach(column => {
+        if (rawUpdateData[column] !== undefined) {
+          updateData[column] = rawUpdateData[column];
+        }
+      });
+
+      // Extract Vietnamese location data if present and map to existing columns
+      if (rawUpdateData.province || rawUpdateData.district || rawUpdateData.ward) {
+        updateData.location_data = JSON.stringify({
+          province: rawUpdateData.province,
+          district: rawUpdateData.district,
+          ward: rawUpdateData.ward
+        });
+}
+
       // Process boolean fields if they come as strings
       if (updateData.is_active !== undefined) {
         updateData.is_active = updateData.is_active === true || updateData.is_active === 'true';
       }
 
+      console.log('Filtered update data:', JSON.stringify(updateData, null, 2));
       const updatedSpace = await SpaceModel.update(spaceId, updateData);
 
+      console.log('Update successful, returning space:', JSON.stringify(updatedSpace, null, 2));
       return res.status(200).json({
         success: true,
         message: 'Space updated successfully',

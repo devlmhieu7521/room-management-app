@@ -116,15 +116,23 @@ const SpaceManagement = () => {
       }
       setError('');
 
-      // If we have space data in the location state, use it
-      if (location.state && location.state.spaceData && !showRefreshing) {
+      // Check if we should force a refresh based on navigation state
+      const forceRefresh = location.state && location.state.refreshData;
+
+      // If we have space data in the location state and don't need to refresh, use it
+      if (location.state && location.state.spaceData && !showRefreshing && !forceRefresh) {
         setSpace(location.state.spaceData);
+        console.log('Using space data from navigation state');
       } else {
         // Otherwise fetch from API
         try {
+          console.log('Fetching space from API...');
           const response = await apiService.spaces.getById(spaceId);
+          console.log('Space API response:', response.data);
+
           if (response.data && response.data.space) {
             setSpace(response.data.space);
+            console.log('Space data loaded from API');
           } else {
             setError('Could not load space details');
           }
@@ -139,6 +147,7 @@ const SpaceManagement = () => {
         const tenantResponse = await apiService.tenants.getBySpace(spaceId);
         if (tenantResponse.data && tenantResponse.data.tenants) {
           setTenants(tenantResponse.data.tenants);
+          console.log('Tenant data loaded:', tenantResponse.data.tenants.length);
 
           // Generate sample rental history based on tenants
           generateRentalHistory(tenantResponse.data.tenants);
@@ -159,6 +168,11 @@ const SpaceManagement = () => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+
+      // Clear the navigation state after using it to prevent stale data on future navigations
+      if (location.state) {
+        window.history.replaceState({}, document.title);
+      }
     }
   };
 

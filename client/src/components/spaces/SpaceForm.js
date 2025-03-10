@@ -119,29 +119,23 @@ const SpaceForm = () => {
   const extractVietnameseLocation = (spaceData) => {
     if (!spaceData) return {};
 
-    // These values might be stored in a variety of ways depending on implementation:
-    // 1. As JSON in a field
-    // 2. As separate fields
-    // 3. Parsed from city, state fields
+    console.log('Extracting Vietnamese location from:', spaceData);
 
-    // This is a simplified approach - adjust based on actual data structure
+    // Default structure for a location
     const result = {
       province: null,
       district: null,
       ward: null
     };
 
-    // Option 1: If we have dedicated fields already
-    if (spaceData.province) result.province = spaceData.province;
-    if (spaceData.district) result.district = spaceData.district;
-    if (spaceData.ward) result.ward = spaceData.ward;
-
-    // Option 2: If location data is stored as JSON in a field
+    // Option 1: If we have explicit location_data field as JSON string
     if (spaceData.location_data) {
       try {
         const locationData = typeof spaceData.location_data === 'string'
           ? JSON.parse(spaceData.location_data)
           : spaceData.location_data;
+
+        console.log('Parsed location data:', locationData);
 
         if (locationData.province) result.province = locationData.province;
         if (locationData.district) result.district = locationData.district;
@@ -151,6 +145,33 @@ const SpaceForm = () => {
       }
     }
 
+    // Option 2: Direct properties in the spaceData
+    if (spaceData.province && typeof spaceData.province === 'object') {
+      result.province = spaceData.province;
+    }
+    if (spaceData.district && typeof spaceData.district === 'object') {
+      result.district = spaceData.district;
+    }
+    if (spaceData.ward && typeof spaceData.ward === 'object') {
+      result.ward = spaceData.ward;
+    }
+
+    // Option 3: Create basic location objects from city/state if Vietnamese
+    if (!result.province && spaceData.city && spaceData.country === 'Vietnam') {
+      result.province = {
+        code: '', // We don't have the code
+        name: spaceData.city
+      };
+    }
+
+    if (!result.district && spaceData.state) {
+      result.district = {
+        code: '', // We don't have the code
+        name: spaceData.state
+      };
+    }
+
+    console.log('Extracted location:', result);
     return result;
   };
 
@@ -165,7 +186,13 @@ const SpaceForm = () => {
           // If we have space data in location state, use it
           if (location.state && location.state.spaceData) {
             const spaceData = location.state.spaceData;
+
+            // Log entire space data for debugging
+            console.log('Space data from location state:', spaceData);
+
+            // Extract Vietnamese location
             const vietnameseLocation = extractVietnameseLocation(spaceData);
+            console.log('Extracted location data:', vietnameseLocation);
 
             setFormData({
               ...spaceData,
@@ -176,35 +203,82 @@ const SpaceForm = () => {
             // If this is a Vietnamese address
             if (spaceData.country === 'Vietnam' || vietnameseLocation.province) {
               setUseVietnameseFormat(true);
+
+              // If we only have city and state but not province and district objects
+              if (!vietnameseLocation.province && spaceData.city) {
+                console.log('Creating province object from city:', spaceData.city);
+                // Create a basic object with just the name
+                setFormData(prev => ({
+                  ...prev,
+                  province: { name: spaceData.city }
+                }));
+              }
+
+              if (!vietnameseLocation.district && spaceData.state) {
+                console.log('Creating district object from state:', spaceData.state);
+                setFormData(prev => ({
+                  ...prev,
+                  district: { name: spaceData.state }
+                }));
+              }
             } else {
               setUseVietnameseFormat(false);
             }
           } else {
             // Otherwise fetch from API
-            const response = await apiService.spaces.getById(spaceId);
-            if (response.data && response.data.space) {
-              const spaceData = response.data.space;
-              const vietnameseLocation = extractVietnameseLocation(spaceData);
+            try {
+              const response = await apiService.spaces.getById(spaceId);
+              console.log('Space API response:', response.data);
 
-              setFormData({
-                ...spaceData,
-                ...vietnameseLocation
-              });
-              setOriginalData(spaceData);
+              if (response.data && response.data.space) {
+                const spaceData = response.data.space;
 
-              // If this is a Vietnamese address
-              if (spaceData.country === 'Vietnam' || vietnameseLocation.province) {
-                setUseVietnameseFormat(true);
+                // Extract Vietnamese location
+                const vietnameseLocation = extractVietnameseLocation(spaceData);
+                console.log('Extracted Vietnamese location:', vietnameseLocation);
+
+                // Update form data
+                setFormData({
+                  ...spaceData,
+                  ...vietnameseLocation
+                });
+                setOriginalData(spaceData);
+
+                // If this is a Vietnamese address
+                if (spaceData.country === 'Vietnam' || vietnameseLocation.province) {
+                  setUseVietnameseFormat(true);
+
+                  // If we only have city and state but not province and district objects
+                  if (!vietnameseLocation.province && spaceData.city) {
+                    console.log('Creating province object from city:', spaceData.city);
+                    // Create a basic object with just the name
+                    setFormData(prev => ({
+                      ...prev,
+                      province: { name: spaceData.city }
+                    }));
+                  }
+
+                  if (!vietnameseLocation.district && spaceData.state) {
+                    console.log('Creating district object from state:', spaceData.state);
+                    setFormData(prev => ({
+                      ...prev,
+                      district: { name: spaceData.state }
+                    }));
+                  }
+                } else {
+                  setUseVietnameseFormat(false);
+                }
               } else {
-                setUseVietnameseFormat(false);
+                setError('Could not load space details');
               }
-            } else {
-              setError('Could not load space details');
+            } catch (error) {
+              console.error('Error fetching space details:', error);
+              setError(apiService.handleError(error, 'Failed to load space details. Please try again later.'));
             }
           }
         } catch (error) {
-          console.error('Error fetching space details:', error);
-          setError(apiService.handleError(error, 'Failed to load space details. Please try again later.'));
+          console.error('Error loading space data:', error);
+          setError('Failed to load space details. Please try again.');
         } finally {
           setLoading(false);
         }
@@ -357,9 +431,9 @@ const SpaceForm = () => {
       // Set country explicitly for Vietnamese addresses
       processedData.country = 'Vietnam';
 
-      // Generate a formatted postal code if using Vietnamese format
-      if (processedData.province && processedData.district) {
-        processedData.zip_code = `${processedData.province.code}${processedData.district.code}`;
+      // Store ward information in zip_code if we have it
+      if (processedData.ward && processedData.ward.name) {
+        processedData.zip_code = processedData.ward.name;
       }
 
       // Format the address for storage & display
@@ -367,21 +441,9 @@ const SpaceForm = () => {
       const districtName = processedData.district ? processedData.district.name : '';
       const wardName = processedData.ward ? processedData.ward.name : '';
 
-      // Store complete location for Vietnamese addresses
-      processedData.location_data = JSON.stringify({
-        province: processedData.province,
-        district: processedData.district,
-        ward: processedData.ward
-      });
-
       // Update city and state for backward compatibility
       processedData.city = provinceName;
       processedData.state = districtName;
-
-      // Create a formatted full address
-      if (!processedData.full_address && wardName && districtName && provinceName) {
-        processedData.full_address = `${processedData.street_address}, ${wardName}, ${districtName}, ${provinceName}, Vietnam`;
-      }
     }
 
     return processedData;
@@ -406,48 +468,60 @@ const SpaceForm = () => {
 
     try {
       const processedData = prepareSubmissionData();
-      let response;
+      console.log('Submitting data:', JSON.stringify(processedData, null, 2));
 
-      // If editing, update the space; otherwise create new
+      // Simplify the data to only include what the server needs
+      const essentialData = {
+        title: processedData.title,
+        description: processedData.description,
+        space_type: processedData.space_type,
+        capacity: processedData.capacity,
+        street_address: processedData.street_address,
+        city: processedData.city,
+        state: processedData.state,
+        zip_code: processedData.zip_code,
+        country: processedData.country,
+        is_active: processedData.is_active
+      };
+
       if (isEditMode) {
-        response = await apiService.spaces.update(spaceId, processedData);
-      } else {
-        response = await apiService.spaces.create(processedData);
-      }
+        console.log('Updating space with ID:', spaceId);
+        const response = await apiService.spaces.update(spaceId, essentialData);
+        console.log('Update response:', response.data);
 
-      // Check if the API call was successful
-      if (response.data && (response.data.space || response.data.success)) {
-        setNotification({
-          open: true,
-          message: isEditMode ? 'Space updated successfully!' : 'Space created successfully!',
-          severity: 'success'
-        });
+        if (response.data.success) {
+          setNotification({
+            open: true,
+            message: 'Space updated successfully!',
+            severity: 'success'
+          });
 
-        // Update original data if in edit mode
-        if (isEditMode && response.data.space) {
-          setOriginalData(response.data.space);
-          setFormData(response.data.space);
+          // Direct manual navigation without passing complex state
+          window.location.href = `/spaces/${spaceId}/manage`;
+        } else {
+          throw new Error(response.data.message || 'Failed to update space');
         }
-
-        // Redirect after success
-        setTimeout(() => {
-          if (isEditMode) {
-            navigate(`/spaces/${spaceId}/manage`, {
-              state: { spaceData: response.data.space }
-            });
-          } else {
-            navigate('/my-spaces', {
-              state: { spaceAdded: true }
-            });
-          }
-        }, 1500);
       } else {
-        throw new Error('API response missing expected data');
+        // Create new space logic
+        const response = await apiService.spaces.create(essentialData);
+        console.log('Create response:', response.data);
+
+        if (response.data.success) {
+          setNotification({
+            open: true,
+            message: 'Space created successfully!',
+            severity: 'success'
+          });
+
+          // Direct manual navigation
+          window.location.href = '/my-spaces';
+        } else {
+          throw new Error(response.data.message || 'Failed to create space');
+        }
       }
     } catch (error) {
       console.error('Error with space:', error);
-      setError(apiService.handleError(error, 'Failed to process space. Please try again.'));
-    } finally {
+      setError(error.message || 'Failed to process space. Please try again.');
       setSaving(false);
     }
   };
