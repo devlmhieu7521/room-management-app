@@ -118,6 +118,55 @@ const UtilitiesTab = ({ space }) => {
             </div>
           </div>
 
+          {getCurrentMonthData('electricity') && (
+            <div className="utility-details">
+              <div className="utility-detail-item">
+                <span className="utility-detail-label">Current Month:</span>
+                <span className="utility-detail-value">
+                  {getCurrentMonthData('electricity').monthName}
+                </span>
+              </div>
+              <div className="utility-detail-item">
+                <span className="utility-detail-label">Monthly Consumption:</span>
+                <span className="utility-detail-value">
+                  {getCurrentMonthData('electricity').consumption.toFixed(2)} kWh
+                </span>
+              </div>
+              <div className="utility-detail-item">
+                <span className="utility-detail-label">Rate:</span>
+                <span className="utility-detail-value">
+                  {space.electricityPrice.toLocaleString()} VND/kWh
+                </span>
+              </div>
+              <div className="utility-divider"></div>
+              <div className="utility-detail-item">
+                <span className="utility-detail-label">Monthly Cost:</span>
+                <span className="utility-detail-value">
+                  {(getCurrentMonthData('electricity').consumption * space.electricityPrice).toLocaleString()} VND
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="utility-card">
+          <div className="utility-card-header">
+            <div className="utility-icon water">💧</div>
+            <div>
+              <h3>Water</h3>
+              <div className="utility-reading-value">
+                {latestReadings.water
+                  ? `${latestReadings.water.value} m³`
+                  : 'No readings'}
+              </div>
+              {latestReadings.water && (
+                <div className="utility-reading-date">
+                  Last reading: {formatDateTime(latestReadings.water.readingDate)}
+                </div>
+              )}
+            </div>
+          </div>
+
           {getCurrentMonthData('water') && (
             <div className="utility-details">
               <div className="utility-detail-item">

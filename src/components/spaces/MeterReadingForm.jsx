@@ -90,10 +90,10 @@ const MeterReadingForm = ({ spaceId, type, onReadingAdded, previousReading }) =>
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-            <label htmlFor={`${type}-reading`}>
+          <label htmlFor={`${type}-reading`}>
             Reading Value {type === 'electricity' ? '(kWh)' : '(m³)'}
-            </label>
-            <input
+          </label>
+          <input
             type="number"
             id={`${type}-reading`}
             name="value"
@@ -103,12 +103,12 @@ const MeterReadingForm = ({ spaceId, type, onReadingAdded, previousReading }) =>
             step="0.01"
             min={previousReading ? previousReading.value : 0}
             required
-            />
-            {previousReading && (
+          />
+          {previousReading && (
             <small className="form-hint">
-                Previous reading: {previousReading.value} on {formatReadingDate(previousReading.readingDate)}
+              Previous reading: {previousReading.value} on {formatReadingDate(previousReading.readingDate)}
             </small>
-            )}
+          )}
         </div>
 
         <div className="form-group">
