@@ -112,7 +112,7 @@ const UtilitiesTab = ({ space }) => {
               </div>
               {latestReadings.electricity && (
                 <div className="utility-reading-date">
-                  Last reading: {formatDateTime(latestReadings.water.readingDate)}
+                  Last reading: {formatDateTime(latestReadings.electricity.readingDate)}
                 </div>
               )}
             </div>

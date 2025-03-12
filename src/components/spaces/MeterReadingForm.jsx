@@ -4,7 +4,6 @@ import meterReadingService from '../../services/meterReadingService';
 const MeterReadingForm = ({ spaceId, type, onReadingAdded, previousReading }) => {
   const [formData, setFormData] = useState({
     value: '',
-    readingDate: new Date().toISOString().slice(0, 16), // Format: YYYY-MM-DDTHH:MM
     notes: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,11 +21,6 @@ const MeterReadingForm = ({ spaceId, type, onReadingAdded, previousReading }) =>
   const validateForm = () => {
     if (!formData.value || isNaN(formData.value) || parseFloat(formData.value) < 0) {
       setError('Please enter a valid reading value (must be a positive number)');
-      return false;
-    }
-
-    if (!formData.readingDate) {
-      setError('Please select a reading date and time');
       return false;
     }
 
@@ -55,8 +49,8 @@ const MeterReadingForm = ({ spaceId, type, onReadingAdded, previousReading }) =>
       const readingData = {
         ...formData,
         value: parseFloat(formData.value),
-        // Ensure the readingDate is properly formatted as an ISO string
-        readingDate: new Date(formData.readingDate).toISOString()
+        // Automatically use current time
+        readingDate: new Date().toISOString()
       };
 
       const result = await meterReadingService.addMeterReading(spaceId, type, readingData);
@@ -64,7 +58,6 @@ const MeterReadingForm = ({ spaceId, type, onReadingAdded, previousReading }) =>
       // Clear the form
       setFormData({
         value: '',
-        readingDate: new Date().toISOString().slice(0, 16),
         notes: ''
       });
 
@@ -96,41 +89,26 @@ const MeterReadingForm = ({ spaceId, type, onReadingAdded, previousReading }) =>
       {success && <div className="success-message">Reading added successfully!</div>}
 
       <form onSubmit={handleSubmit}>
-        <div className="form-row">
-          <div className="form-group">
+        <div className="form-group">
             <label htmlFor={`${type}-reading`}>
-              Reading Value {type === 'electricity' ? '(kWh)' : '(m³)'}
+            Reading Value {type === 'electricity' ? '(kWh)' : '(m³)'}
             </label>
             <input
-              type="number"
-              id={`${type}-reading`}
-              name="value"
-              value={formData.value}
-              onChange={handleChange}
-              placeholder={`Enter ${type} reading`}
-              step="0.01"
-              min={previousReading ? previousReading.value : 0}
-              required
+            type="number"
+            id={`${type}-reading`}
+            name="value"
+            value={formData.value}
+            onChange={handleChange}
+            placeholder={`Enter ${type} reading`}
+            step="0.01"
+            min={previousReading ? previousReading.value : 0}
+            required
             />
             {previousReading && (
-              <small className="form-hint">
+            <small className="form-hint">
                 Previous reading: {previousReading.value} on {formatReadingDate(previousReading.readingDate)}
-              </small>
+            </small>
             )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor={`${type}-reading-date`}>Reading Date and Time</label>
-            <input
-              type="datetime-local"
-              id={`${type}-reading-date`}
-              name="readingDate"
-              value={formData.readingDate}
-              onChange={handleChange}
-              max={new Date().toISOString().slice(0, 16)}
-              required
-            />
-          </div>
         </div>
 
         <div className="form-group">
