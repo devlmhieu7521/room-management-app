@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import spaceService from '../../services/spaceService';
+import UtilitiesTab from './UtilitiesTab';
 import '../../styles/space-detail.css';
+import '../../styles/meter-readings.css';
 
 const SpaceDetail = () => {
   const { id } = useParams();
@@ -130,6 +132,12 @@ const SpaceDetail = () => {
           Details
         </button>
         <button
+          className={`tab-button ${activeTab === 'utilities' ? 'active' : ''}`}
+          onClick={() => setActiveTab('utilities')}
+        >
+          Utilities
+        </button>
+        <button
           className={`tab-button ${activeTab === 'tenants' ? 'active' : ''}`}
           onClick={() => setActiveTab('tenants')}
         >
@@ -221,6 +229,10 @@ const SpaceDetail = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === 'utilities' && (
+          <UtilitiesTab space={space} />
         )}
 
         {activeTab === 'tenants' && (

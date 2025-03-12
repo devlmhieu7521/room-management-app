@@ -15,6 +15,7 @@ import './styles/space.css';
 import './styles/modal.css';
 import './styles/page.css';
 import './styles/space-detail.css';
+import './styles/meter-readings.css';
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
