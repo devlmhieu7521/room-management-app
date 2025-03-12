@@ -1,0 +1,110 @@
+/* Global Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f5f7fb;
+  }
+
+  /* Container */
+  .page-container {
+    min-height: 100vh;
+  }
+
+  /* Notifications */
+  .notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    border-radius: 4px;
+    font-weight: 500;
+    z-index: 1000;
+    animation: fadeIn 0.3s, fadeOut 0.3s 5s forwards;
+  }
+
+  .notification.success {
+    background-color: #4caf50;
+    color: white;
+  }
+
+  .notification.error {
+    background-color: #f44336;
+    color: white;
+  }
+
+  .notification.info {
+    background-color: #2196f3;
+    color: white;
+  }
+
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-10px); }
+  }
+
+  /* Common styles */
+  .btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #4a6fdc;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.3s;
+  }
+
+  .btn:hover {
+    background-color: #3d5cba;
+  }
+
+  .btn-secondary {
+    background-color: #6c757d;
+  }
+
+  .btn-secondary:hover {
+    background-color: #5a6268;
+  }
+
+  .btn-danger {
+    background-color: #dc3545;
+  }
+
+  .btn-danger:hover {
+    background-color: #c82333;
+  }
+
+  /* For dashboard we'll need later */
+  .main-content {
+    padding: 20px;
+  }
+
+  .card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .section-title {
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #333;
+  }

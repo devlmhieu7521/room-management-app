@@ -1,0 +1,119 @@
+/* Auth Container */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f5f7fb;
+    padding: 20px;
+  }
+
+  /* Auth Card */
+  .auth-card {
+    width: 100%;
+    max-width: 450px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+  }
+
+  .auth-card h2 {
+    color: #333;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 24px;
+  }
+
+  /* Form Elements */
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #555;
+  }
+
+  .form-group input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+  }
+
+  .form-group input:focus {
+    border-color: #4a6fdc;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(74, 111, 220, 0.2);
+  }
+
+  .error-message {
+    color: #e53935;
+    font-size: 14px;
+    margin-top: 5px;
+  }
+
+  /* Button */
+  .auth-button {
+    width: 100%;
+    padding: 14px;
+    background-color: #4a6fdc;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+  .auth-button:hover {
+    background-color: #3d5cba;
+  }
+
+  .auth-button:disabled {
+    background-color: #a0aec0;
+    cursor: not-allowed;
+  }
+
+  /* Links */
+  .auth-links {
+    margin-top: 20px;
+    text-align: center;
+  }
+
+  .auth-links p {
+    margin: 10px 0;
+    font-size: 15px;
+    color: #666;
+  }
+
+  .auth-links a {
+    color: #4a6fdc;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .auth-links a:hover {
+    text-decoration: underline;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 576px) {
+    .auth-card {
+      padding: 20px;
+    }
+
+    .auth-card h2 {
+      font-size: 22px;
+    }
+
+    .form-group input {
+      padding: 10px 12px;
+    }
+  }
