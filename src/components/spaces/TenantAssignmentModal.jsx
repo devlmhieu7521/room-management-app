@@ -1,88 +1,124 @@
+/**
+ * TenantAssignmentModal Component
+ *
+ * This modal is used in the tenant detail view to assign a space (apartment or room) to a tenant.
+ * It shows available spaces, allows selecting a space type (apartment or room), and
+ * setting lease details before assigning the tenant to the selected space.
+ *
+ * Note: This is different from TenantSelectionModal, which is used in space details to
+ * assign tenants to a specific space.
+ */
+
 import React, { useState, useEffect } from 'react';
 import tenantService from '../../services/tenantService';
-import TenantForm from '../tenants/TenantForm';
 import '../../styles/modal.css';
 import '../../styles/tenant.css';
 
-const TenantAssignmentModal = ({ isOpen, onClose, spaceId, roomId, boardingHouseId, onAssignTenant }) => {
-  const [view, setView] = useState('list'); // 'list' or 'create'
-  const [availableTenants, setAvailableTenants] = useState([]);
-  const [selectedTenant, setSelectedTenant] = useState(null);
+const TenantAssignmentModal = ({ isOpen, onClose, tenantId, onAssignSpace }) => {
+  const [view, setView] = useState('list'); // 'list' or 'assign'
+  const [availableSpaces, setAvailableSpaces] = useState({ apartments: [], rooms: [] });
+  const [selectedSpace, setSelectedSpace] = useState(null);
+  const [spaceType, setSpaceType] = useState('apartment'); // 'apartment' or 'room'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [formData, setFormData] = useState({
+    start_date: new Date().toISOString().split('T')[0], // Today's date
+    end_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0], // 1 year from now
+    rent_amount: 0,
+    security_deposit: 0
+  });
 
+  // Fetch available spaces when modal opens
   useEffect(() => {
-    const fetchAvailableTenants = async () => {
+    const fetchAvailableSpaces = async () => {
       try {
         setLoading(true);
-        // Get all tenants
-        const allTenants = await tenantService.getAllTenants();
-
-        // Filter for tenants that don't have a space assignment or are inactive
-        const unassignedTenants = allTenants.filter(tenant =>
-          !tenant.space_id || tenant.status === 'inactive'
-        );
-
-        setAvailableTenants(unassignedTenants);
+        const spaces = await tenantService.getAvailableSpaces();
+        setAvailableSpaces(spaces);
         setError(null);
       } catch (err) {
-        console.error("Error fetching available tenants:", err);
-        setError("Failed to load available tenants");
+        console.error("Error fetching available spaces:", err);
+        setError("Failed to load available spaces");
       } finally {
         setLoading(false);
       }
     };
 
     if (isOpen) {
-      fetchAvailableTenants();
+      fetchAvailableSpaces();
     }
   }, [isOpen]);
 
-  const handleAssignTenant = async () => {
-    if (!selectedTenant) return;
-
-    try {
-      // Prepare space assignment data
-      const updateData = {
-        status: 'active',
-        start_date: new Date().toISOString().split('T')[0], // Today's date
-        end_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0], // 1 year from now
-      };
-
-      if (roomId && boardingHouseId) {
-        // Assigning to a room in a boarding house
-        updateData.space_type = 'room';
-        updateData.room_id = roomId;
-        updateData.boarding_house_id = boardingHouseId;
-        updateData.space_id = roomId; // Using room ID as space ID for rooms
-      } else if (spaceId) {
-        // Assigning to an apartment
-        updateData.space_type = 'apartment';
-        updateData.space_id = spaceId;
-      }
-
-      // Update the tenant with space assignment
-      await tenantService.updateTenant(selectedTenant.id, updateData);
-
-      // Notify parent component
-      if (onAssignTenant) {
-        onAssignTenant(selectedTenant.id);
-      }
-
-      // Close the modal
-      onClose();
-    } catch (err) {
-      console.error("Error assigning tenant:", err);
-      setError("Failed to assign tenant");
-    }
+  // Handle form input changes
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const handleTenantCreated = (newTenantId) => {
-    // After creating a new tenant, close the modal and refresh the parent component
-    if (onAssignTenant) {
-      onAssignTenant(newTenantId);
+  // Handle space type selection
+  const handleSpaceTypeChange = (type) => {
+    setSpaceType(type);
+    setSelectedSpace(null); // Reset selection when changing space type
+  };
+
+  // Handle apartment selection
+  const handleApartmentSelect = (apartment) => {
+    setSelectedSpace(apartment);
+    setFormData(prev => ({
+      ...prev,
+      rent_amount: apartment.monthlyRent || 0
+    }));
+  };
+
+  // Handle room selection
+  const handleRoomSelect = (room) => {
+    setSelectedSpace(room);
+    setFormData(prev => ({
+      ...prev,
+      rent_amount: room.monthlyRent || 0
+    }));
+  };
+
+  // Handle assignment confirmation
+  const handleAssignSpace = async () => {
+    if (!selectedSpace || !tenantId) return;
+
+    try {
+      // Prepare update data based on space type
+      const updateData = {
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        rent_amount: parseFloat(formData.rent_amount),
+        security_deposit: parseFloat(formData.security_deposit),
+        status: 'active'
+      };
+
+      if (spaceType === 'apartment') {
+        updateData.space_type = 'apartment';
+        updateData.space_id = selectedSpace.id;
+        updateData.space_name = selectedSpace.name;
+      } else {
+        updateData.space_type = 'room';
+        updateData.room_id = selectedSpace.id;
+        updateData.boarding_house_id = selectedSpace.boardingHouseId;
+        updateData.boarding_house_name = selectedSpace.boardingHouseName;
+      }
+
+      // Update the tenant with the space assignment
+      await tenantService.updateTenant(tenantId, updateData);
+
+      // Notify parent component and close modal
+      if (onAssignSpace) {
+        onAssignSpace();
+      }
+      onClose();
+    } catch (err) {
+      console.error("Error assigning space to tenant:", err);
+      setError("Failed to assign space to tenant. Please try again.");
     }
-    onClose();
   };
 
   if (!isOpen) return null;
@@ -90,104 +126,199 @@ const TenantAssignmentModal = ({ isOpen, onClose, spaceId, roomId, boardingHouse
   return (
     <div className="modal-backdrop">
       <div className="modal-content" style={{ maxWidth: '700px', maxHeight: '80vh', overflow: 'auto' }}>
-        {view === 'list' ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h3>Assign Housing to Tenant</h3>
+          <button className="close-button" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '1.5rem' }}>
+            ×
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="loading">Loading available spaces...</div>
+        ) : error ? (
+          <div className="error-message">{error}</div>
+        ) : (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3>Assign Tenant</h3>
-              <button
-                className="btn-primary"
-                onClick={() => setView('create')}
+            {/* Space Type Selection */}
+            <div className="space-type-tabs" style={{ display: 'flex', marginBottom: '20px', borderBottom: '1px solid #e5e7eb' }}>
+              <div
+                className={`space-type-tab ${spaceType === 'apartment' ? 'active' : ''}`}
+                onClick={() => handleSpaceTypeChange('apartment')}
+                style={{
+                  padding: '10px 20px',
+                  cursor: 'pointer',
+                  borderBottom: spaceType === 'apartment' ? '2px solid #4a6fdc' : '2px solid transparent',
+                  color: spaceType === 'apartment' ? '#4a6fdc' : '#6b7280'
+                }}
               >
-                Create New Tenant
-              </button>
+                Apartments ({availableSpaces.apartments.length})
+              </div>
+              <div
+                className={`space-type-tab ${spaceType === 'room' ? 'active' : ''}`}
+                onClick={() => handleSpaceTypeChange('room')}
+                style={{
+                  padding: '10px 20px',
+                  cursor: 'pointer',
+                  borderBottom: spaceType === 'room' ? '2px solid #4a6fdc' : '2px solid transparent',
+                  color: spaceType === 'room' ? '#4a6fdc' : '#6b7280'
+                }}
+              >
+                Rooms ({availableSpaces.rooms.length})
+              </div>
             </div>
 
-            {loading ? (
-              <div className="loading">Loading available tenants...</div>
-            ) : error ? (
-              <div className="error-message">{error}</div>
-            ) : availableTenants.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '20px' }}>
-                <p>No available tenants found. Create a new tenant to assign to this space.</p>
-              </div>
-            ) : (
+            {/* Apartments List */}
+            {spaceType === 'apartment' && (
               <>
-                <div style={{ marginBottom: '20px' }}>
-                  <p>Select a tenant to assign to this space:</p>
-                </div>
-
-                <div className="tenant-list" style={{ marginBottom: '20px' }}>
-                  {availableTenants.map(tenant => (
-                    <div
-                      key={tenant.id}
-                      className={`tenant-item ${selectedTenant?.id === tenant.id ? 'selected' : ''}`}
-                      style={{
-                        padding: '10px',
-                        border: `1px solid ${selectedTenant?.id === tenant.id ? '#4a6fdc' : '#e5e7eb'}`,
-                        borderRadius: '4px',
-                        marginBottom: '10px',
-                        cursor: 'pointer',
-                        backgroundColor: selectedTenant?.id === tenant.id ? 'rgba(74, 111, 220, 0.1)' : 'white'
-                      }}
-                      onClick={() => setSelectedTenant(tenant)}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <div className="tenant-avatar">
-                          {tenant.first_name[0]}{tenant.last_name[0]}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: '500' }}>{tenant.first_name} {tenant.last_name}</div>
-                          <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>{tenant.email} • {tenant.phone_number}</div>
-                          <div>
-                            <span className={`status-badge ${tenant.status}`} style={{ marginTop: '5px' }}>
-                              {tenant.status}
-                            </span>
+                {availableSpaces.apartments.length === 0 ? (
+                  <div className="empty-state" style={{ textAlign: 'center', padding: '20px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                    <p>No available apartments found.</p>
+                    <a href="/spaces/apartments/create" className="btn-primary" style={{ display: 'inline-block', marginTop: '10px' }}>Create New Apartment</a>
+                  </div>
+                ) : (
+                  <div className="space-list">
+                    <p>Select an apartment to assign to this tenant:</p>
+                    <div style={{ maxHeight: '300px', overflowY: 'auto', marginTop: '10px' }}>
+                      {availableSpaces.apartments.map(apartment => (
+                        <div
+                          key={apartment.id}
+                          className={`space-item ${selectedSpace?.id === apartment.id ? 'selected' : ''}`}
+                          style={{
+                            padding: '15px',
+                            border: `1px solid ${selectedSpace?.id === apartment.id ? '#4a6fdc' : '#e5e7eb'}`,
+                            borderRadius: '8px',
+                            marginBottom: '15px',
+                            cursor: 'pointer',
+                            backgroundColor: selectedSpace?.id === apartment.id ? 'rgba(74, 111, 220, 0.1)' : 'white',
+                            transition: 'all 0.2s'
+                          }}
+                          onClick={() => handleApartmentSelect(apartment)}
+                        >
+                          <div style={{ fontWeight: '600', fontSize: '1.1rem', marginBottom: '5px' }}>{apartment.name}</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', fontSize: '0.9rem', color: '#4b5563' }}>
+                            <span>📍 {apartment.address}</span>
+                            <span>📏 {apartment.size} m²</span>
+                            <span>👥 Max Occupancy: {apartment.maxOccupancy}</span>
+                            <span>💰 {apartment.monthlyRent?.toLocaleString() || 0} VND/month</span>
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </>
             )}
 
-            <div className="modal-actions">
+            {/* Rooms List */}
+            {spaceType === 'room' && (
+              <>
+                {availableSpaces.rooms.length === 0 ? (
+                  <div className="empty-state" style={{ textAlign: 'center', padding: '20px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                    <p>No available rooms found.</p>
+                    <a href="/spaces/boarding-houses" className="btn-primary" style={{ display: 'inline-block', marginTop: '10px' }}>Manage Boarding Houses</a>
+                  </div>
+                ) : (
+                  <div className="space-list">
+                    <p>Select a room to assign to this tenant:</p>
+                    <div style={{ maxHeight: '300px', overflowY: 'auto', marginTop: '10px' }}>
+                      {availableSpaces.rooms.map(room => (
+                        <div
+                          key={`${room.boardingHouseId}-${room.id}`}
+                          className={`space-item ${selectedSpace?.id === room.id ? 'selected' : ''}`}
+                          style={{
+                            padding: '15px',
+                            border: `1px solid ${selectedSpace?.id === room.id ? '#4a6fdc' : '#e5e7eb'}`,
+                            borderRadius: '8px',
+                            marginBottom: '15px',
+                            cursor: 'pointer',
+                            backgroundColor: selectedSpace?.id === room.id ? 'rgba(74, 111, 220, 0.1)' : 'white',
+                            transition: 'all 0.2s'
+                          }}
+                          onClick={() => handleRoomSelect(room)}
+                        >
+                          <div style={{ fontWeight: '600', fontSize: '1.1rem', marginBottom: '5px' }}>
+                            {room.boardingHouseName} - Room {room.id}
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', fontSize: '0.9rem', color: '#4b5563' }}>
+                            <span>📍 {room.address}</span>
+                            <span>📏 {room.size} m²</span>
+                            <span>👥 Max Occupancy: {room.maxOccupancy}</span>
+                            <span>💰 {room.monthlyRent?.toLocaleString() || 0} VND/month</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Lease Details Section (shown when a space is selected) */}
+            {selectedSpace && (
+              <div className="lease-details" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                <h4 style={{ marginTop: 0, marginBottom: '15px' }}>Lease Details</h4>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '15px', marginBottom: '15px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Lease Start Date*</label>
+                    <input
+                      type="date"
+                      name="start_date"
+                      value={formData.start_date}
+                      onChange={handleChange}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Lease End Date*</label>
+                    <input
+                      type="date"
+                      name="end_date"
+                      value={formData.end_date}
+                      onChange={handleChange}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Monthly Rent (VND)*</label>
+                    <input
+                      type="number"
+                      name="rent_amount"
+                      value={formData.rent_amount}
+                      onChange={handleChange}
+                      min="0"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Security Deposit (VND)</label>
+                    <input
+                      type="number"
+                      name="security_deposit"
+                      value={formData.security_deposit}
+                      onChange={handleChange}
+                      min="0"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="modal-actions" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button className="btn-secondary" onClick={onClose}>
                 Cancel
               </button>
               <button
                 className="btn-primary"
-                onClick={handleAssignTenant}
-                disabled={!selectedTenant || loading}
+                onClick={handleAssignSpace}
+                disabled={!selectedSpace}
               >
-                Assign Tenant
+                Assign Space
               </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <h3>Create New Tenant</h3>
-            <div style={{ marginTop: '10px', marginBottom: '20px' }}>
-              <button
-                className="btn-secondary"
-                onClick={() => setView('list')}
-                style={{ padding: '5px 10px' }}
-              >
-                Back to Tenant List
-              </button>
-            </div>
-
-            <div style={{ maxHeight: 'calc(80vh - 150px)', overflow: 'auto' }}>
-              <TenantForm
-                inModal={true}
-                preselectedSpace={{
-                  spaceId: spaceId || null,
-                  roomId: roomId || null,
-                  boardingHouseId: boardingHouseId || null
-                }}
-                onTenantCreated={handleTenantCreated}
-                onCancel={() => setView('list')}
-              />
             </div>
           </>
         )}

@@ -1,4 +1,4 @@
-// Tenant data model
+// Enhanced tenant data model with tenant relationship support
 // This defines the structure of a tenant in the system
 
 const defaultTenant = {
@@ -15,6 +15,13 @@ const defaultTenant = {
     end_date: null,              // Lease end date (ISO string)
     rent_amount: 0,              // Monthly rent amount (might be different from space's default)
     security_deposit: 0,         // Security deposit amount
+
+    // NEW tenant relationship fields
+    tenant_type: 'main',         // 'main' (primary tenant) or 'normal' (secondary tenant)
+    main_tenant_id: null,        // Reference to the main tenant ID (null for main tenants)
+    related_tenants: [],         // Array of related tenant IDs (empty for normal tenants)
+    relationship_type: null,     // Relationship to main tenant (e.g., 'spouse', 'roommate', 'child', etc.)
+
     emergency_contact: {         // Emergency contact information
       name: '',
       relationship: '',
@@ -33,4 +40,4 @@ const defaultTenant = {
     updated_at: null             // Last update timestamp
   };
 
-  export default defaultTenant;
+export default defaultTenant;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import tenantService from '../../services/tenantService';
+import AddRelatedTenantButton from '../../components/tenants/AddRelatedTenantButton';
 import '../../styles/TenantList.css';
 
 const TenantListPage = () => {
@@ -178,7 +179,15 @@ const TenantListPage = () => {
                           {tenant.first_name[0]}{tenant.last_name[0]}
                         </div>
                         <div className="tenant-name-text">
-                          <span className="full-name">{tenant.first_name} {tenant.last_name}</span>
+                          <span className="full-name">
+                            {tenant.first_name} {tenant.last_name}
+                            {tenant.tenant_type === 'main' && (
+                              <span className="tenant-type-badge main">Main</span>
+                            )}
+                            {tenant.tenant_type === 'normal' && (
+                              <span className="tenant-type-badge normal">Secondary</span>
+                            )}
+                          </span>
                           <span className="id-number">{tenant.identification?.type}: {tenant.identification?.number}</span>
                         </div>
                       </td>
@@ -212,27 +221,31 @@ const TenantListPage = () => {
                         </span>
                       </td>
                       <td className="tenant-actions">
-                        <Link
-                          to={`/tenants/${tenant.id}`}
-                          className="btn-action view"
-                          title="View Details"
-                        >
-                          View
-                        </Link>
-                        <Link
-                          to={`/tenants/edit/${tenant.id}`}
-                          className="btn-action edit"
-                          title="Edit Tenant"
-                        >
-                          Edit
-                        </Link>
-                        <button
-                          className="btn-action delete"
-                          onClick={() => handleDeleteClick(tenant.id)}
-                          title="Delete Tenant"
-                        >
-                          Delete
-                        </button>
+                        <div className="action-buttons">
+                          <Link
+                            to={`/tenants/${tenant.id}`}
+                            className="btn-action view"
+                            title="View Details"
+                          >
+                            View
+                          </Link>
+                          <Link
+                            to={`/tenants/edit/${tenant.id}`}
+                            className="btn-action edit"
+                            title="Edit Tenant"
+                          >
+                            Edit
+                          </Link>
+                          {/* Add Related Tenant Button (shows only for main tenants) */}
+                          <AddRelatedTenantButton tenant={tenant} />
+                          <button
+                            className="btn-action delete"
+                            onClick={() => handleDeleteClick(tenant.id)}
+                            title="Delete Tenant"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -1,0 +1,201 @@
+/* Styles for tenant relationships */
+.tenant-relationships-tab {
+    margin-bottom: 30px;
+  }
+
+  .tenant-type-info {
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+  }
+
+  .tenant-type-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background-color: #f3f4f6;
+    color: #4b5563;
+  }
+
+  .tenant-type-badge.main {
+    background-color: #dbeafe;
+    color: #2563eb;
+  }
+
+  .tenant-type-badge.normal {
+    background-color: #e0f2fe;
+    color: #0369a1;
+  }
+
+  /* Related tenants section */
+  .related-tenants-section h4,
+  .main-tenant-section h4 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    color: #1f2937;
+  }
+
+  .related-tenants-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .related-tenant-card,
+  .main-tenant-card {
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+  }
+
+  .tenant-card-header {
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #f3f4f6;
+    background-color: #f9fafb;
+  }
+
+  .tenant-card-header .tenant-avatar {
+    width: 40px;
+    height: 40px;
+    margin-right: 12px;
+  }
+
+  .tenant-header-content h4 {
+    margin: 0 0 5px 0;
+    font-size: 1.1rem;
+  }
+
+  .relationship-type {
+    font-size: 0.9rem;
+    color: #6b7280;
+  }
+
+  .tenant-card-body {
+    padding: 15px;
+  }
+
+  .tenant-contact-info {
+    margin-bottom: 15px;
+  }
+
+  .contact-item {
+    margin-bottom: 5px;
+    font-size: 0.95rem;
+  }
+
+  .contact-label {
+    font-weight: 500;
+    margin-right: 5px;
+    color: #4b5563;
+  }
+
+  .contact-value {
+    color: #111827;
+  }
+
+  .shared-space-info,
+  .different-space-info {
+    margin-bottom: 10px;
+  }
+
+  .shared-space-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    background-color: #dcfce7;
+    color: #15803d;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  .different-space-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    background-color: #fef3c7;
+    color: #b45309;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  .tenant-card-footer {
+    padding: 15px;
+    border-top: 1px solid #f3f4f6;
+    background-color: #f9fafb;
+    text-align: right;
+  }
+
+  .add-related-tenant {
+    margin-top: 20px;
+  }
+
+  /* Empty states */
+  .no-data {
+    color: #6b7280;
+    font-style: italic;
+    margin-bottom: 15px;
+  }
+
+  /* Tenant detail tabs */
+  .tenant-detail-tabs {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 25px;
+    overflow-x: auto;
+  }
+
+  .tenant-tab {
+    padding: 15px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #6b7280;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .tenant-tab:hover {
+    color: #4a6fdc;
+  }
+
+  .tenant-tab.active {
+    color: #4a6fdc;
+    border-bottom-color: #4a6fdc;
+  }
+
+  /* Warning message */
+  .warning-message {
+    background-color: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 4px;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+    color: #b45309;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .related-tenants-list {
+      grid-template-columns: 1fr;
+    }
+
+    .tenant-detail-tabs {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+    }
+
+    .tenant-tab {
+      padding: 12px 15px;
+      font-size: 0.9rem;
+    }
+  }

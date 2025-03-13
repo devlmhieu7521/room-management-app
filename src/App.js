@@ -47,6 +47,8 @@ import './styles/TenantForm.css'; // Tenant form styles
 import './styles/TenantDetail.css'; // Tenant detail styles
 import './styles/TenantList.css'; // Tenant list styles
 import './styles/SpaceTenantsTab.css'; // Space tenants tab styles
+import './styles/TenantRelationships.css'; // Tenant relationships styles
+import './styles/RelatedTenant.css'; // Related tenant styles - NEW
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {

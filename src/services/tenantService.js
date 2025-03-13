@@ -1,5 +1,5 @@
-// Tenant Service
-// Handles all tenant-related API operations (mock implementation for MVP)
+// Enhanced Tenant Service
+// Handles all tenant-related API operations with support for tenant relationships
 
 import defaultTenant from '../models/tenantModel';
 import spaceService from './spaceService';
@@ -24,6 +24,24 @@ const tenantService = {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
+
+        // If this is a normal tenant linked to a main tenant
+        if (newTenant.tenant_type === 'normal' && newTenant.main_tenant_id) {
+          // Find the main tenant
+          const mainTenantIndex = tenants.findIndex(t => t.id === newTenant.main_tenant_id);
+
+          if (mainTenantIndex !== -1) {
+            // Add this tenant to the main tenant's related_tenants array
+            const mainTenant = tenants[mainTenantIndex];
+            const updatedMainTenant = {
+              ...mainTenant,
+              related_tenants: [...(mainTenant.related_tenants || []), newTenant.id],
+              updated_at: new Date().toISOString()
+            };
+
+            tenants[mainTenantIndex] = updatedMainTenant;
+          }
+        }
 
         // Add new tenant
         tenants.push(newTenant);
@@ -83,6 +101,38 @@ const tenantService = {
     });
   },
 
+  // Get related tenants for a main tenant
+  getRelatedTenants: async (mainTenantId) => {
+    try {
+      const tenantsJson = localStorage.getItem(TENANTS_STORAGE_KEY);
+      const tenants = tenantsJson ? JSON.parse(tenantsJson) : [];
+
+      // Find all tenants that have this tenant as their main_tenant_id
+      const relatedTenants = tenants.filter(t => t.main_tenant_id === mainTenantId);
+
+      return relatedTenants;
+    } catch (error) {
+      console.error('Error getting related tenants:', error);
+      throw error;
+    }
+  },
+
+  // Get main tenant for a normal tenant
+  getMainTenant: async (normalTenantId) => {
+    try {
+      const tenant = await tenantService.getTenantById(normalTenantId);
+
+      if (tenant.tenant_type === 'main' || !tenant.main_tenant_id) {
+        return null; // This is already a main tenant or no main tenant ID set
+      }
+
+      return await tenantService.getTenantById(tenant.main_tenant_id);
+    } catch (error) {
+      console.error('Error getting main tenant:', error);
+      throw error;
+    }
+  },
+
   // Update an existing tenant
   updateTenant: (tenantId, updatedData) => {
     return new Promise(async (resolve, reject) => {
@@ -94,6 +144,8 @@ const tenantService = {
 
         if (index !== -1) {
           const oldTenant = tenants[index];
+          const oldMainTenantId = oldTenant.main_tenant_id;
+          const oldTenantType = oldTenant.tenant_type;
 
           // Update tenant data
           const updatedTenant = {
@@ -101,6 +153,110 @@ const tenantService = {
             ...updatedData,
             updated_at: new Date().toISOString()
           };
+
+          // Handle tenant relationship changes
+          if (updatedTenant.tenant_type === 'normal' &&
+              updatedTenant.main_tenant_id &&
+              (updatedTenant.main_tenant_id !== oldMainTenantId || oldTenantType !== 'normal')) {
+
+            // Remove this tenant from the old main tenant's related_tenants array
+            if (oldMainTenantId) {
+              const oldMainTenantIndex = tenants.findIndex(t => t.id === oldMainTenantId);
+              if (oldMainTenantIndex !== -1) {
+                const oldMainTenant = tenants[oldMainTenantIndex];
+                const updatedRelatedTenants = (oldMainTenant.related_tenants || []).filter(id => id !== tenantId);
+
+                tenants[oldMainTenantIndex] = {
+                  ...oldMainTenant,
+                  related_tenants: updatedRelatedTenants,
+                  updated_at: new Date().toISOString()
+                };
+              }
+            }
+
+            // Add this tenant to the new main tenant's related_tenants array
+            const newMainTenantIndex = tenants.findIndex(t => t.id === updatedTenant.main_tenant_id);
+            if (newMainTenantIndex !== -1) {
+              const newMainTenant = tenants[newMainTenantIndex];
+              const updatedRelatedTenants = [...(newMainTenant.related_tenants || []), tenantId];
+
+              tenants[newMainTenantIndex] = {
+                ...newMainTenant,
+                related_tenants: updatedRelatedTenants,
+                updated_at: new Date().toISOString()
+              };
+            }
+          }
+
+          // Handle tenant type changes from normal to main
+          if (oldTenantType === 'normal' && updatedTenant.tenant_type === 'main') {
+            // Remove main_tenant_id reference
+            updatedTenant.main_tenant_id = null;
+
+            // Remove this tenant from the old main tenant's related_tenants array
+            if (oldMainTenantId) {
+              const oldMainTenantIndex = tenants.findIndex(t => t.id === oldMainTenantId);
+              if (oldMainTenantIndex !== -1) {
+                const oldMainTenant = tenants[oldMainTenantIndex];
+                const updatedRelatedTenants = (oldMainTenant.related_tenants || []).filter(id => id !== tenantId);
+
+                tenants[oldMainTenantIndex] = {
+                  ...oldMainTenant,
+                  related_tenants: updatedRelatedTenants,
+                  updated_at: new Date().toISOString()
+                };
+              }
+            }
+          }
+
+          // Handle tenant type changes from main to normal
+          if (oldTenantType === 'main' && updatedTenant.tenant_type === 'normal' && updatedTenant.main_tenant_id) {
+            // Move any related tenants to the new main tenant
+            if (oldTenant.related_tenants && oldTenant.related_tenants.length > 0) {
+              const newMainTenantIndex = tenants.findIndex(t => t.id === updatedTenant.main_tenant_id);
+              if (newMainTenantIndex !== -1) {
+                const newMainTenant = tenants[newMainTenantIndex];
+                const updatedRelatedTenants = [
+                  ...(newMainTenant.related_tenants || []),
+                  ...oldTenant.related_tenants
+                ];
+
+                tenants[newMainTenantIndex] = {
+                  ...newMainTenant,
+                  related_tenants: updatedRelatedTenants,
+                  updated_at: new Date().toISOString()
+                };
+
+                // Update the main_tenant_id reference for all transferred related tenants
+                oldTenant.related_tenants.forEach(relatedTenantId => {
+                  const relatedTenantIndex = tenants.findIndex(t => t.id === relatedTenantId);
+                  if (relatedTenantIndex !== -1) {
+                    tenants[relatedTenantIndex] = {
+                      ...tenants[relatedTenantIndex],
+                      main_tenant_id: updatedTenant.main_tenant_id,
+                      updated_at: new Date().toISOString()
+                    };
+                  }
+                });
+              }
+            }
+
+            // Clear the related_tenants array
+            updatedTenant.related_tenants = [];
+
+            // Add this tenant to the new main tenant's related_tenants array
+            const newMainTenantIndex = tenants.findIndex(t => t.id === updatedTenant.main_tenant_id);
+            if (newMainTenantIndex !== -1) {
+              const newMainTenant = tenants[newMainTenantIndex];
+              const updatedRelatedTenants = [...(newMainTenant.related_tenants || []), tenantId];
+
+              tenants[newMainTenantIndex] = {
+                ...newMainTenant,
+                related_tenants: updatedRelatedTenants,
+                updated_at: new Date().toISOString()
+              };
+            }
+          }
 
           tenants[index] = updatedTenant;
           localStorage.setItem(TENANTS_STORAGE_KEY, JSON.stringify(tenants));
@@ -144,6 +300,39 @@ const tenantService = {
           return;
         }
 
+        // If this is a main tenant with related tenants, handle them
+        if (tenantToDelete.tenant_type === 'main' && tenantToDelete.related_tenants && tenantToDelete.related_tenants.length > 0) {
+          // For each related tenant, either delete them or update their main_tenant_id to null
+          for (const relatedTenantId of tenantToDelete.related_tenants) {
+            const relatedTenantIndex = tenants.findIndex(t => t.id === relatedTenantId);
+            if (relatedTenantIndex !== -1) {
+              // Update related tenant to remove main_tenant_id reference
+              tenants[relatedTenantIndex] = {
+                ...tenants[relatedTenantIndex],
+                main_tenant_id: null,
+                relationship_type: null,
+                tenant_type: 'main',  // Promote to main tenant
+                updated_at: new Date().toISOString()
+              };
+            }
+          }
+        }
+
+        // If this is a normal tenant, remove it from its main tenant's related_tenants array
+        if (tenantToDelete.tenant_type === 'normal' && tenantToDelete.main_tenant_id) {
+          const mainTenantIndex = tenants.findIndex(t => t.id === tenantToDelete.main_tenant_id);
+          if (mainTenantIndex !== -1) {
+            const mainTenant = tenants[mainTenantIndex];
+            const updatedRelatedTenants = (mainTenant.related_tenants || []).filter(id => id !== tenantId);
+
+            tenants[mainTenantIndex] = {
+              ...mainTenant,
+              related_tenants: updatedRelatedTenants,
+              updated_at: new Date().toISOString()
+            };
+          }
+        }
+
         // Unassign tenant from space if needed
         if (tenantToDelete.space_id) {
           await tenantService.unassignTenantFromSpace(tenantToDelete);
@@ -173,6 +362,24 @@ const tenantService = {
 
         setTimeout(() => {
           resolve(filteredTenants);
+        }, 300);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  },
+
+  // Get all main tenants (for selection in dropdown)
+  getAllMainTenants: () => {
+    return new Promise((resolve, reject) => {
+      try {
+        const tenantsJson = localStorage.getItem(TENANTS_STORAGE_KEY);
+        const tenants = tenantsJson ? JSON.parse(tenantsJson) : [];
+
+        const mainTenants = tenants.filter(tenant => tenant.tenant_type === 'main');
+
+        setTimeout(() => {
+          resolve(mainTenants);
         }, 300);
       } catch (error) {
         reject(error);
@@ -336,6 +543,21 @@ const tenantService = {
       console.error('Error getting available spaces:', error);
       throw error;
     }
+  },
+
+  // Common relationship types (for dropdown options)
+  getRelationshipTypes: () => {
+    return [
+      { value: 'spouse', label: 'Spouse' },
+      { value: 'partner', label: 'Partner' },
+      { value: 'roommate', label: 'Roommate' },
+      { value: 'family_member', label: 'Family Member' },
+      { value: 'child', label: 'Child' },
+      { value: 'parent', label: 'Parent' },
+      { value: 'sibling', label: 'Sibling' },
+      { value: 'friend', label: 'Friend' },
+      { value: 'other', label: 'Other' }
+    ];
   }
 };
 

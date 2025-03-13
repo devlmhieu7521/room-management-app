@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import tenantService from '../../services/tenantService';
-import TenantAssignmentModal from './TenantAssignmentModal';
+import TenantSelectionModal from './TenantSelectionModal';
 import '../../styles/SpaceTenantsTab.css';
 
 const SpaceTenantsTab = ({ space, isRoom = false, roomId = null, boardingHouseId = null }) => {
@@ -84,8 +84,8 @@ const SpaceTenantsTab = ({ space, isRoom = false, roomId = null, boardingHouseId
           Assign Tenant
         </button>
 
-        {/* Tenant Assignment Modal */}
-        <TenantAssignmentModal
+        {/* Tenant Selection Modal */}
+        <TenantSelectionModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           spaceId={isRoom ? null : space.id}
@@ -107,8 +107,8 @@ const SpaceTenantsTab = ({ space, isRoom = false, roomId = null, boardingHouseId
           Assign Additional Tenant
         </button>
 
-        {/* Tenant Assignment Modal */}
-        <TenantAssignmentModal
+        {/* Tenant Selection Modal */}
+        <TenantSelectionModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           spaceId={isRoom ? null : space.id}

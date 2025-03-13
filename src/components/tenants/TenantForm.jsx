@@ -14,9 +14,12 @@ const TenantForm = ({
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('personal');
   const [availableSpaces, setAvailableSpaces] = useState({ apartments: [], rooms: [] });
+  const [mainTenants, setMainTenants] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [spaceType, setSpaceType] = useState('none');
+  const [relationshipTypes, setRelationshipTypes] = useState([]);
+  const [relatedTenants, setRelatedTenants] = useState([]);
 
   // Initialize form data with empty values
   const [formData, setFormData] = useState({
@@ -32,6 +35,10 @@ const TenantForm = ({
     end_date: '',
     rent_amount: 0,
     security_deposit: 0,
+    tenant_type: 'main',
+    main_tenant_id: null,
+    related_tenants: [],
+    relationship_type: null,
     emergency_contact: {
       name: '',
       relationship: '',
@@ -51,9 +58,17 @@ const TenantForm = ({
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Get relationship types
+        const relationshipTypeOptions = tenantService.getRelationshipTypes();
+        setRelationshipTypes(relationshipTypeOptions);
+
         // Fetch available spaces
         const spaces = await tenantService.getAvailableSpaces();
         setAvailableSpaces(spaces);
+
+        // Fetch main tenants for selection
+        const mainTenantsData = await tenantService.getAllMainTenants();
+        setMainTenants(mainTenantsData);
 
         // If in edit mode, fetch tenant data
         if (editMode && initialTenantId) {
@@ -63,6 +78,14 @@ const TenantForm = ({
           // Set the space type based on tenant data
           if (tenant.space_id) {
             setSpaceType(tenant.space_type);
+          }
+
+          // If this is a main tenant, fetch related tenants
+          if (tenant.tenant_type === 'main' && tenant.related_tenants && tenant.related_tenants.length > 0) {
+            const relatedTenantsData = await Promise.all(
+              tenant.related_tenants.map(id => tenantService.getTenantById(id))
+            );
+            setRelatedTenants(relatedTenantsData);
           }
         }
         // If a preselected space is provided
