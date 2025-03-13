@@ -12,7 +12,11 @@ import '../../styles/boarding-house-styles.css'; // Import the new boarding hous
  * @param {boolean} editMode - Whether the form is in edit mode
  * @param {string} spaceId - ID of the space to edit (only used in edit mode)
  */
-const SpaceForm = ({ editMode = false, spaceId = null }) => {
+const SpaceForm = ({
+  editMode = false,
+  spaceId = null,
+  initialTab = null,
+  initialAction = null  }) => {
   // State for the form data and UI
   const [formData, setFormData] = useState({ ...defaultSpace });
   const [locations, setLocations] = useState({
@@ -71,6 +75,7 @@ const SpaceForm = ({ editMode = false, spaceId = null }) => {
    * Fetch locations and space data (if in edit mode)
    */
   useEffect(() => {
+
     // Get location data
     const locationData = spaceService.getLocations();
     setLocations({
@@ -114,6 +119,47 @@ const SpaceForm = ({ editMode = false, spaceId = null }) => {
       fetchSpace();
     }
   }, [editMode, spaceId, formData.address.city, formData.address.district]);
+
+  useEffect(() => {
+    if (editMode && initialTab === 'rooms' && formData.propertyType === 'boarding_house') {
+      if (initialAction === 'add') {
+        // Show the room form for adding a new room
+        setShowRoomForm(true);
+        setEditingRoomIndex(null);
+        setCurrentRoomTab('general');
+        setRoomFormData({
+          roomNumber: '',
+          squareMeters: '',
+          maxOccupancy: 1,
+          monthlyRent: 0,
+          description: '',
+          floor: 1,
+          windowDirection: '',
+          condition: 'good',
+          images: [],
+          electricityPrice: formData.electricityPrice || 2800,
+          waterPrice: formData.waterPrice || 10000,
+          internetFee: 0,
+          cableTVFee: 0,
+          amenities: {
+            furniture: false,
+            tvCable: false,
+            internet: false,
+            airConditioner: false,
+            waterHeater: false,
+            allowPets: false,
+            parking: false,
+            security: false,
+          },
+          additionalFees: {
+            petFee: 0,
+            parkingFee: 0,
+          },
+          status: 'available'
+        });
+      }
+    }
+  }, [editMode, initialTab, initialAction, formData.propertyType, formData.electricityPrice, formData.waterPrice]);
 
   /**
    * Handle form input changes
@@ -510,10 +556,6 @@ const SpaceForm = ({ editMode = false, spaceId = null }) => {
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
     }
-    // also validate monthly rent
-    if (!formData.monthlyRent || formData.monthlyRent <= 0) {
-      newErrors.monthlyRent = 'Monthly rent must be greater than 0';
-    }
 
     if (!formData.address.street.trim()) {
       newErrors['address.street'] = 'Street address is required';
@@ -531,38 +573,20 @@ const SpaceForm = ({ editMode = false, spaceId = null }) => {
       newErrors['address.ward'] = 'Ward is required';
     }
 
-    // For boarding houses, require at least one room
-    if (formData.propertyType === 'boarding_house') {
+    // For boarding houses, don't require rooms during initial creation
+    if (formData.propertyType === 'boarding_house' && editMode) {
+      // Only validate rooms requirement if we're editing an existing boarding house
       if (rooms.length === 0) {
         newErrors.rooms = 'Add at least one room to your boarding house';
       }
-    } else {
-      // For apartments, validate size and max occupancy
+    } else if (formData.propertyType === 'apartment') {
+      // For apartments, always validate size and max occupancy
       if (formData.squareMeters <= 0) {
         newErrors.squareMeters = 'Size must be greater than 0';
       }
 
       if (formData.maxOccupancy <= 0) {
         newErrors.maxOccupancy = 'Maximum occupancy must be at least 1';
-      }
-
-      // Validate utility pricing for apartments
-      if (formData.electricityPrice < 0) {
-        newErrors.electricityPrice = 'Electricity price cannot be negative';
-      }
-
-      if (formData.waterPrice < 0) {
-        newErrors.waterPrice = 'Water price cannot be negative';
-      }
-
-      // Validate pet fee if pets are allowed
-      if (formData.amenities.allowPets && formData.additionalFees.petFee < 0) {
-        newErrors['additionalFees.petFee'] = 'Pet fee cannot be negative';
-      }
-
-      // Validate parking fee if parking is available
-      if (formData.amenities.parking && formData.additionalFees.parkingFee < 0) {
-        newErrors['additionalFees.parkingFee'] = 'Parking fee cannot be negative';
       }
     }
 
@@ -597,13 +621,13 @@ const SpaceForm = ({ editMode = false, spaceId = null }) => {
       let spaceDataToSave;
 
       if (formData.propertyType === 'boarding_house') {
-        // For boarding houses, we need basic info and rooms
+        // For boarding houses, we need basic info (rooms can be empty initially)
         spaceDataToSave = {
           name: formData.name,
           propertyType: formData.propertyType,
           address: formData.address,
           images, // Property-level images (building exterior, common areas)
-          rooms,  // Room-specific details are stored in the rooms array
+          rooms: rooms || [],  // Room-specific details are stored in the rooms array
           status: formData.status || 'available',
           // Keep property-level electricity and water prices as defaults
           electricityPrice: formData.electricityPrice || 2800,
@@ -618,16 +642,23 @@ const SpaceForm = ({ editMode = false, spaceId = null }) => {
         };
       }
 
+      let redirectUrl = '/spaces';
+
       if (editMode && spaceId) {
         // Update existing space
         await spaceService.updateSpace(spaceId, spaceDataToSave);
+        redirectUrl = `/spaces/detail/${spaceId}`;
       } else {
         // Create new space
-        await spaceService.createSpace(spaceDataToSave);
+        const newSpace = await spaceService.createSpace(spaceDataToSave);
+        // For boarding houses, redirect to the detail page for room creation
+        if (formData.propertyType === 'boarding_house') {
+          redirectUrl = `/spaces/detail/${newSpace.id}`;
+        }
       }
 
-      // Redirect to spaces list
-      navigate('/spaces');
+      // Redirect to appropriate page
+      navigate(redirectUrl);
     } catch (error) {
       console.error('Error saving space:', error);
       setErrors({

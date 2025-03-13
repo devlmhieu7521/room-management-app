@@ -30,6 +30,8 @@ const SpaceDetail = () => {
     fetchSpaceDetails();
   }, [id]);
 
+
+
   const handleEditClick = () => {
     navigate(`/spaces/edit/${id}`);
   };
@@ -53,6 +55,10 @@ const SpaceDetail = () => {
 
   const formatAddress = (address) => {
     return `${address.street}, ${address.ward}, ${address.district}, ${address.city}`;
+  };
+
+  const handleAddRoom = () => {
+    navigate(`/spaces/edit/${id}?tab=rooms&action=add`);
   };
 
   if (loading) {
@@ -274,16 +280,16 @@ const SpaceDetail = () => {
             </div>
 
             {!space.rooms || space.rooms.length === 0 ? (
-              <div className="empty-tab-state">
+            <div className="empty-tab-state">
                 <h3>No Rooms Added Yet</h3>
                 <p>Add rooms to your boarding house to start renting them out.</p>
                 <button
-                  className="btn-primary"
-                  onClick={() => navigate(`/spaces/edit/${id}`)}
+                className="btn-primary"
+                onClick={handleAddRoom}
                 >
-                  Add Rooms
+                Add Your First Room
                 </button>
-              </div>
+            </div>
             ) : (
               <div className="room-cards">
                 {space.rooms.map((room, index) => (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import SpaceForm from '../../components/spaces/SpaceForm';
 import '../../styles/space.css';
 import '../../styles/modal.css';
@@ -7,6 +7,10 @@ import '../../styles/modal.css';
 const EditSpacePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const initialTab = queryParams.get('tab');
+  const initialAction = queryParams.get('action');
 
   // Check if the user is logged in
   const isAuthenticated = localStorage.getItem('authToken');
@@ -26,7 +30,12 @@ const EditSpacePage = () => {
       </div>
 
       <div className="container">
-        <SpaceForm editMode={true} spaceId={id} />
+        <SpaceForm
+          editMode={true}
+          spaceId={id}
+          initialTab={initialTab}
+          initialAction={initialAction}
+        />
       </div>
     </div>
   );
