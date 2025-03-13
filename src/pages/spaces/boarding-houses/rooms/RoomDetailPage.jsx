@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import spaceService from '../../../../services/spaceService';
+import meterReadingService from '../../../../services/meterReadingService';
+import UtilitiesTab from '../../../../components/spaces/UtilitiesTab';
+import '../../../../styles/space-detail.css';
+import '../../../../styles/meter-readings.css';
 
 const RoomDetailPage = () => {
   const { id, roomId } = useParams();
@@ -10,6 +14,7 @@ const RoomDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
+  const [roomUtilities, setRoomUtilities] = useState(null);
 
   useEffect(() => {
     const fetchBoardingHouseAndRoom = async () => {
@@ -30,7 +35,20 @@ const RoomDetailPage = () => {
           throw new Error('Room not found');
         }
 
+        // Create a room object that mimics a space for utilities tab
+        const roomAsSpace = {
+          id: `${id}-room-${roomId}`, // Create a unique ID for the room
+          name: `Room ${roomId}`,
+          electricityPrice: roomData.electricityPrice || boardingHouseData.electricityPrice,
+          waterPrice: roomData.waterPrice || boardingHouseData.waterPrice,
+          meterReadings: roomData.meterReadings || {
+            electricity: [],
+            water: []
+          }
+        };
+
         setRoom(roomData);
+        setRoomUtilities(roomAsSpace);
       } catch (error) {
         console.error('Error fetching boarding house or room:', error);
         setError('Failed to load room details. Please try again.');
@@ -42,8 +60,56 @@ const RoomDetailPage = () => {
     fetchBoardingHouseAndRoom();
   }, [id, roomId]);
 
-  const handleBackToBoardingHouse = () => {
-    navigate(`/spaces/boarding-houses/${id}`);
+  const handleEditRoom = () => {
+    navigate(`/spaces/boarding-houses/${id}/rooms/${roomId}/edit`);
+  };
+
+  const handleDeleteRoom = () => {
+    if (window.confirm('Are you sure you want to delete this room? This action cannot be undone.')) {
+      deleteRoom();
+    }
+  };
+
+  const deleteRoom = async () => {
+    try {
+      // Remove the room from the boarding house
+      const updatedRooms = boardingHouse.rooms.filter(r => r.roomNumber !== roomId);
+      const updatedBoardingHouse = {
+        ...boardingHouse,
+        rooms: updatedRooms
+      };
+
+      await spaceService.updateSpace(id, updatedBoardingHouse);
+      navigate(`/spaces/boarding-houses/${id}`);
+    } catch (error) {
+      console.error('Error deleting room:', error);
+      setError('Failed to delete room. Please try again.');
+    }
+  };
+
+  const handleAssignTenant = () => {
+    navigate(`/tenants/add?roomId=${roomId}&boardingHouseId=${id}`);
+  };
+
+  const handleRoomStatusChange = async (newStatus) => {
+    try {
+      // Update the room status
+      const updatedRoom = { ...room, status: newStatus };
+      const updatedRooms = boardingHouse.rooms.map(r =>
+        r.roomNumber === roomId ? updatedRoom : r
+      );
+
+      const updatedBoardingHouse = {
+        ...boardingHouse,
+        rooms: updatedRooms
+      };
+
+      await spaceService.updateSpace(id, updatedBoardingHouse);
+      setRoom(updatedRoom);
+    } catch (error) {
+      console.error('Error updating room status:', error);
+      setError('Failed to update room status. Please try again.');
+    }
   };
 
   // Helper to get amenity labels
@@ -74,6 +140,25 @@ const RoomDetailPage = () => {
     return <div className="error-container">Room not found.</div>;
   }
 
+  const calculateTotalRent = () => {
+    let total = room.monthlyRent || 0;
+
+    // Add additional fees if applicable
+    if (room.amenities?.allowPets && room.additionalFees?.petFee) {
+      total += room.additionalFees.petFee;
+    }
+
+    if (room.amenities?.parking && room.additionalFees?.parkingFee) {
+      total += room.additionalFees.parkingFee;
+    }
+
+    // Add internet and cable TV fees if they exist
+    if (room.internetFee) total += room.internetFee;
+    if (room.cableTVFee) total += room.cableTVFee;
+
+    return total;
+  };
+
   return (
     <div className="space-detail-container">
       <div className="breadcrumb">
@@ -86,66 +171,355 @@ const RoomDetailPage = () => {
         <div className="space-basic-info">
           <h1>Room {room.roomNumber}</h1>
           <p className="space-address">
-            {boardingHouse.name}, {boardingHouse.address.street}
+            {boardingHouse.name}, {boardingHouse.address.street}, {boardingHouse.address.district}
           </p>
-          <div className={`room-status-badge ${room.status}`}>
+          <div className="property-type-badge">
+            Boarding House Room
+          </div>
+          <div className={`space-status-badge ${room.status}`}>
             {room.status}
           </div>
         </div>
 
         <div className="space-actions">
-          <button className="btn-secondary" onClick={handleBackToBoardingHouse}>
+          <button className="btn-secondary" onClick={() => navigate(`/spaces/boarding-houses/${id}`)}>
             Back to Boarding House
+          </button>
+          <button className="btn-secondary" onClick={handleEditRoom}>
+            Edit Room
+          </button>
+          <button className="btn-danger" onClick={handleDeleteRoom}>
+            Delete Room
           </button>
         </div>
       </div>
 
-      {/* Room Details */}
-      <div className="detail-section">
-        <h3>Room Information</h3>
-        <div className="detail-grid">
-          <div className="detail-item">
-            <span className="detail-label">Room Number</span>
-            <span className="detail-value">{room.roomNumber}</span>
+      <div className="space-image-gallery">
+        {room.images && room.images.length > 0 ? (
+          <div className="space-main-image">
+            <img src={room.images[0].url} alt={`Room ${room.roomNumber}`} />
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Status</span>
-            <span className="detail-value">{room.status}</span>
+        ) : (
+          <div className="space-no-image">
+            <p>No images available</p>
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Size</span>
-            <span className="detail-value">{room.squareMeters} m²</span>
+        )}
+
+        {room.images && room.images.length > 1 && (
+          <div className="space-thumbnails">
+            {room.images.slice(1).map((image, index) => (
+              <div key={index} className="space-thumbnail">
+                <img src={image.url} alt={`Room ${room.roomNumber} ${index + 2}`} />
+              </div>
+            ))}
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Monthly Rent</span>
-            <span className="detail-value">{room.monthlyRent?.toLocaleString() || 0} VND</span>
-          </div>
-          <div className="detail-item">
-            <span className="detail-label">Maximum Occupancy</span>
-            <span className="detail-value">{room.maxOccupancy} people</span>
-          </div>
-        </div>
+        )}
       </div>
 
-      {room.description && (
-        <div className="detail-section">
-          <h3>Description</h3>
-          <p className="room-description">{room.description}</p>
-        </div>
-      )}
+      <div className="space-detail-tabs">
+        <button
+          className={`tab-button ${activeTab === 'details' ? 'active' : ''}`}
+          onClick={() => setActiveTab('details')}
+        >
+          Details
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'utilities' ? 'active' : ''}`}
+          onClick={() => setActiveTab('utilities')}
+        >
+          Utilities
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'tenants' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tenants')}
+        >
+          Tenants
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'billing' ? 'active' : ''}`}
+          onClick={() => setActiveTab('billing')}
+        >
+          Billing History
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'status' ? 'active' : ''}`}
+          onClick={() => setActiveTab('status')}
+        >
+          Status
+        </button>
+      </div>
 
-      <div className="detail-section">
-        <h3>Amenities</h3>
-        <div className="amenities-list">
-          {getAmenityLabels(room.amenities).length > 0 ?
-            getAmenityLabels(room.amenities).map((amenity, index) => (
-              <span key={index} className="amenity-tag">
-                {amenity}
-              </span>
-            )) :
-            <span className="no-amenities">No amenities listed</span>
-          }
-        </div>
+      <div className="space-detail-content">
+        {activeTab === 'details' && (
+          <div className="space-details-tab">
+            <div className="detail-section">
+              <h3>Room Information</h3>
+              <div className="detail-grid">
+                <div className="detail-item">
+                  <span className="detail-label">Room Number</span>
+                  <span className="detail-value">{room.roomNumber}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Status</span>
+                  <span className="detail-value">{room.status}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Size</span>
+                  <span className="detail-value">{room.squareMeters} m²</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Monthly Rent</span>
+                  <span className="detail-value">{room.monthlyRent?.toLocaleString() || 0} VND</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Maximum Occupancy</span>
+                  <span className="detail-value">{room.maxOccupancy} people</span>
+                </div>
+                {room.floor && (
+                  <div className="detail-item">
+                    <span className="detail-label">Floor</span>
+                    <span className="detail-value">{room.floor}</span>
+                  </div>
+                )}
+                <div className="detail-item">
+                  <span className="detail-label">Electricity Rate</span>
+                  <span className="detail-value">{room.electricityPrice?.toLocaleString() || boardingHouse.electricityPrice?.toLocaleString()} VND/kWh</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Water Rate</span>
+                  <span className="detail-value">{room.waterPrice?.toLocaleString() || boardingHouse.waterPrice?.toLocaleString()} VND/m³</span>
+                </div>
+              </div>
+            </div>
+
+            {room.internetFee > 0 || room.cableTVFee > 0 && (
+              <div className="detail-section">
+                <h3>Additional Services</h3>
+                <div className="detail-grid">
+                  {room.internetFee > 0 && (
+                    <div className="detail-item">
+                      <span className="detail-label">Internet Fee</span>
+                      <span className="detail-value">{room.internetFee.toLocaleString()} VND/month</span>
+                    </div>
+                  )}
+                  {room.cableTVFee > 0 && (
+                    <div className="detail-item">
+                      <span className="detail-label">Cable TV Fee</span>
+                      <span className="detail-value">{room.cableTVFee.toLocaleString()} VND/month</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {room.description && (
+              <div className="detail-section">
+                <h3>Description</h3>
+                <p className="room-description">{room.description}</p>
+              </div>
+            )}
+
+            <div className="detail-section">
+              <h3>Amenities</h3>
+              <div className="amenities-list">
+                {getAmenityLabels(room.amenities).length > 0 ?
+                  getAmenityLabels(room.amenities).map((amenity, index) => (
+                    <span key={index} className="amenity-tag">
+                      {amenity}
+                    </span>
+                  )) :
+                  <span className="no-amenities">No amenities listed</span>
+                }
+              </div>
+            </div>
+
+            {(room.amenities?.allowPets || room.amenities?.parking) && (
+              <div className="detail-section">
+                <h3>Additional Fees</h3>
+                <div className="detail-grid">
+                  {room.amenities?.allowPets && room.additionalFees?.petFee > 0 && (
+                    <div className="detail-item">
+                      <span className="detail-label">Pet Fee</span>
+                      <span className="detail-value">
+                        {room.additionalFees.petFee.toLocaleString()} VND/month
+                      </span>
+                    </div>
+                  )}
+                  {room.amenities?.parking && room.additionalFees?.parkingFee > 0 && (
+                    <div className="detail-item">
+                      <span className="detail-label">Parking Fee</span>
+                      <span className="detail-value">
+                        {room.additionalFees.parkingFee.toLocaleString()} VND/month
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="detail-section">
+              <h3>Financial Summary</h3>
+              <div className="detail-grid">
+                <div className="detail-item">
+                  <span className="detail-label">Base Rent</span>
+                  <span className="detail-value">{room.monthlyRent?.toLocaleString() || 0} VND</span>
+                </div>
+                {room.internetFee > 0 && (
+                  <div className="detail-item">
+                    <span className="detail-label">Internet Fee</span>
+                    <span className="detail-value">{room.internetFee.toLocaleString()} VND</span>
+                  </div>
+                )}
+                {room.cableTVFee > 0 && (
+                  <div className="detail-item">
+                    <span className="detail-label">Cable TV Fee</span>
+                    <span className="detail-value">{room.cableTVFee.toLocaleString()} VND</span>
+                  </div>
+                )}
+                {room.amenities?.allowPets && room.additionalFees?.petFee > 0 && (
+                  <div className="detail-item">
+                    <span className="detail-label">Pet Fee</span>
+                    <span className="detail-value">{room.additionalFees.petFee.toLocaleString()} VND</span>
+                  </div>
+                )}
+                {room.amenities?.parking && room.additionalFees?.parkingFee > 0 && (
+                  <div className="detail-item">
+                    <span className="detail-label">Parking Fee</span>
+                    <span className="detail-value">{room.additionalFees.parkingFee.toLocaleString()} VND</span>
+                  </div>
+                )}
+                <div className="detail-item" style={{ fontWeight: 'bold' }}>
+                  <span className="detail-label">Total Monthly Fixed Charges</span>
+                  <span className="detail-value">{calculateTotalRent().toLocaleString()} VND</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Note</span>
+                  <span className="detail-value">Electricity and water are charged based on actual consumption</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'utilities' && roomUtilities && (
+          <UtilitiesTab space={roomUtilities} />
+        )}
+
+        {activeTab === 'tenants' && (
+          <div className="space-tenants-tab">
+            {room.status === 'occupied' && room.tenant ? (
+              <div className="tenant-details">
+                <h3>Current Tenant</h3>
+                <div className="detail-section">
+                  <div className="detail-grid">
+                    <div className="detail-item">
+                      <span className="detail-label">Name</span>
+                      <span className="detail-value">{room.tenant.name}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Phone</span>
+                      <span className="detail-value">{room.tenant.phone}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Email</span>
+                      <span className="detail-value">{room.tenant.email}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Move-in Date</span>
+                      <span className="detail-value">{room.tenant.moveInDate}</span>
+                    </div>
+                  </div>
+                  <div className="tenant-actions" style={{ marginTop: '20px' }}>
+                    <Link to={`/tenants/${room.tenant.id}`} className="btn-secondary">
+                      View Tenant Details
+                    </Link>
+                    <button className="btn-danger" style={{ marginLeft: '10px' }}>
+                      End Tenancy
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="empty-tab-state">
+                <h3>No Tenant Assigned</h3>
+                <p>This room doesn't have a tenant assigned yet.</p>
+                {room.status === 'available' && (
+                  <button className="btn-primary" onClick={handleAssignTenant}>
+                    Assign Tenant
+                  </button>
+                )}
+                {room.status === 'maintenance' && (
+                  <p>Room must be set to 'Available' before assigning a tenant.</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'billing' && (
+          <div className="space-billing-tab">
+            <div className="empty-tab-state">
+              <h3>No Billing History</h3>
+              <p>No invoices have been generated for this room yet.</p>
+              <Link to="/invoices/create" className="btn-primary">
+                Create Invoice
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'status' && (
+          <div className="status-tab">
+            <div className="detail-section">
+              <h3>Room Status Management</h3>
+              <p>Update the status of the room to reflect its current state.</p>
+
+              <div className="current-status" style={{ marginBottom: '20px' }}>
+                <h4>Current Status: <span className={`status-text ${room.status}`}>{room.status}</span></h4>
+              </div>
+
+              <div className="status-options">
+                {room.status !== 'available' && (
+                  <button
+                    className="btn-success"
+                    onClick={() => handleRoomStatusChange('available')}
+                    style={{ marginRight: '10px' }}
+                  >
+                    Set as Available
+                  </button>
+                )}
+
+                {room.status !== 'occupied' && (
+                  <button
+                    className="btn-warning"
+                    onClick={() => handleRoomStatusChange('occupied')}
+                    style={{ marginRight: '10px' }}
+                  >
+                    Set as Occupied
+                  </button>
+                )}
+
+                {room.status !== 'maintenance' && (
+                  <button
+                    className="btn-danger"
+                    onClick={() => handleRoomStatusChange('maintenance')}
+                  >
+                    Set as Maintenance
+                  </button>
+                )}
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4>Status Descriptions:</h4>
+                <ul style={{ marginLeft: '20px' }}>
+                  <li><strong>Available</strong> - Room is ready for new tenants</li>
+                  <li><strong>Occupied</strong> - Room is currently rented out</li>
+                  <li><strong>Maintenance</strong> - Room is under repair or renovation</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
