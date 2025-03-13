@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import spaceService from '../../../services/spaceService';
 import UtilitiesTab from '../../../components/spaces/UtilitiesTab';
+import SpaceTenantsTab from '../../components/spaces/SpaceTenantsTab';
 import '../../../styles/space-detail.css';
 import '../../../styles/meter-readings.css';
 
@@ -253,15 +254,7 @@ const ApartmentDetailPage = () => {
         )}
 
         {activeTab === 'tenants' && (
-          <div className="space-tenants-tab">
-            <div className="empty-tab-state">
-              <h3>No Tenants Assigned Yet</h3>
-              <p>You haven't assigned any tenants to this apartment.</p>
-              <Link to="/tenants/add" className="btn-primary">
-                Add Tenant
-              </Link>
-            </div>
-          </div>
+        <SpaceTenantsTab space={apartment} />
         )}
 
         {activeTab === 'billing' && (

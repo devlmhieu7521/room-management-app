@@ -74,6 +74,15 @@ const MainLayout = () => {
               Spaces
             </NavLink>
 
+            <NavLink
+            to="/tenants"
+            className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+            }
+            >
+            Tenants
+            </NavLink>
+
             {/* Add more navigation links as needed */}
 
             <div className="user-menu">

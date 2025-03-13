@@ -3,43 +3,70 @@ import { Link } from 'react-router-dom';
 import authService from '../services/authService';
 import spaceService from '../services/spaceService';
 import './Dashboard.css';
+import tenantService from '../services/tenantService';
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
-  const [spaces, setSpaces] = useState({
-    apartments: [],
-    boardingHouses: []
+  const [info, setInfo] = useState({
+    spaces: {
+      apartments: [],
+      boardingHouses: []
+    },
+    tenants: {
+      active: 0,
+      pending: 0,
+      inactive: 0,
+      total: 0
+    }
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  // Update the useEffect function to fetch tenant stats as well
+useEffect(() => {
     // Get current user
     const currentUser = authService.getCurrentUser();
     if (currentUser) {
       setUser(currentUser);
     }
 
-    // Fetch spaces
-    const fetchSpaces = async () => {
+    // Fetch data
+    const fetchData = async () => {
       try {
+        // Fetch spaces
         const spacesData = await spaceService.getAllSpaces(currentUser?.id);
 
         // Separate apartments and boarding houses
         const apartments = spacesData.filter(space => space.propertyType === 'apartment');
         const boardingHouses = spacesData.filter(space => space.propertyType === 'boarding_house');
 
-        setSpaces({
-          apartments,
-          boardingHouses
+        // Fetch tenants
+        const tenantsData = await tenantService.getAllTenants();
+
+        // Count tenants by status
+        const activeCount = tenantsData.filter(tenant => tenant.status === 'active').length;
+        const pendingCount = tenantsData.filter(tenant => tenant.status === 'pending').length;
+        const inactiveCount = tenantsData.filter(tenant => tenant.status === 'inactive').length;
+
+        setInfo({
+          spaces: {
+            apartments,
+            boardingHouses
+          },
+          tenants: {
+            active: activeCount,
+            pending: pendingCount,
+            inactive: inactiveCount,
+            total: tenantsData.length
+          }
         });
       } catch (error) {
-        console.error('Error fetching spaces:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSpaces();
+    fetchData();
   }, []);
 
   // Calculate room stats for a boarding house
@@ -138,8 +165,21 @@ const Dashboard = () => {
             </p>
           </div>
         </div>
+        <div className="stat-card">
+            <div className="stat-icon">👥</div>
+            <div className="stat-content">
+            <h3>Total Tenants</h3>
+            <p className="stat-number">{stats.tenants.total}</p>
+            </div>
+        </div>
+        <div className="stat-card">
+            <div className="stat-icon">✅</div>
+            <div className="stat-content">
+            <h3>Active Tenants</h3>
+            <p className="stat-number">{stats.tenants.active}</p>
+            </div>
+        </div>
       </div>
-
       <div className="dashboard-actions">
         <div className="action-card">
           <h3>Manage Properties</h3>

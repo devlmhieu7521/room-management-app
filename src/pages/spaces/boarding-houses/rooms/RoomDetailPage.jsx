@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import spaceService from '../../../../services/spaceService';
 import meterReadingService from '../../../../services/meterReadingService';
+import SpaceTenantsTab from '../../../components/spaces/SpaceTenantsTab';
 import UtilitiesTab from '../../../../components/spaces/UtilitiesTab';
 import '../../../../styles/space-detail.css';
 import '../../../../styles/meter-readings.css';
@@ -414,54 +415,12 @@ const RoomDetailPage = () => {
         )}
 
         {activeTab === 'tenants' && (
-          <div className="space-tenants-tab">
-            {room.status === 'occupied' && room.tenant ? (
-              <div className="tenant-details">
-                <h3>Current Tenant</h3>
-                <div className="detail-section">
-                  <div className="detail-grid">
-                    <div className="detail-item">
-                      <span className="detail-label">Name</span>
-                      <span className="detail-value">{room.tenant.name}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-label">Phone</span>
-                      <span className="detail-value">{room.tenant.phone}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-label">Email</span>
-                      <span className="detail-value">{room.tenant.email}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-label">Move-in Date</span>
-                      <span className="detail-value">{room.tenant.moveInDate}</span>
-                    </div>
-                  </div>
-                  <div className="tenant-actions" style={{ marginTop: '20px' }}>
-                    <Link to={`/tenants/${room.tenant.id}`} className="btn-secondary">
-                      View Tenant Details
-                    </Link>
-                    <button className="btn-danger" style={{ marginLeft: '10px' }}>
-                      End Tenancy
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="empty-tab-state">
-                <h3>No Tenant Assigned</h3>
-                <p>This room doesn't have a tenant assigned yet.</p>
-                {room.status === 'available' && (
-                  <button className="btn-primary" onClick={handleAssignTenant}>
-                    Assign Tenant
-                  </button>
-                )}
-                {room.status === 'maintenance' && (
-                  <p>Room must be set to 'Available' before assigning a tenant.</p>
-                )}
-              </div>
-            )}
-          </div>
+          <SpaceTenantsTab
+            space={boardingHouse}
+            isRoom={true}
+            roomId={roomId}
+            boardingHouseId={id}
+          />
         )}
 
         {activeTab === 'billing' && (

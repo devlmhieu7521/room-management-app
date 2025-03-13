@@ -1,0 +1,155 @@
+/* Space tenant tab styles */
+.space-tenants-tab {
+    margin-bottom: 30px;
+  }
+
+  .tenant-card {
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .tenant-card:last-child {
+    margin-bottom: 0;
+  }
+
+  .tenant-card-header {
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #f3f4f6;
+    background-color: #f9fafb;
+  }
+
+  .tenant-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #4a6fdc;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.2rem;
+    margin-right: 15px;
+    flex-shrink: 0;
+  }
+
+  .tenant-name-container {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tenant-name-container h3 {
+    margin: 0 0 5px 0;
+    font-size: 1.2rem;
+    color: #111827;
+  }
+
+  .tenant-card-body {
+    padding: 20px;
+  }
+
+  .tenant-contact-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+
+  .contact-group {
+    display: flex;
+    gap: 5px;
+    min-width: 200px;
+  }
+
+  .contact-label {
+    font-weight: 500;
+    color: #4b5563;
+  }
+
+  .contact-value {
+    color: #111827;
+  }
+
+  .tenant-lease-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f9fafb;
+    border-radius: 6px;
+  }
+
+  .lease-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+  }
+
+  .lease-label {
+    font-size: 0.85rem;
+    color: #4b5563;
+    margin-bottom: 3px;
+  }
+
+  .lease-value {
+    font-weight: 500;
+    color: #111827;
+  }
+
+  .tenant-notes {
+    margin-top: 20px;
+  }
+
+  .notes-label {
+    font-weight: 500;
+    color: #4b5563;
+    margin-bottom: 5px;
+  }
+
+  .notes-content {
+    padding: 10px;
+    background-color: #f9fafb;
+    border-radius: 6px;
+    color: #4b5563;
+    font-style: italic;
+  }
+
+  .tenant-card-footer {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #f3f4f6;
+    background-color: #f9fafb;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .tenant-lease-details,
+    .tenant-contact-details {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .contact-group,
+    .lease-group {
+      min-width: auto;
+    }
+
+    .tenant-card-footer {
+      flex-direction: column;
+    }
+
+    .tenant-card-footer .btn-secondary,
+    .tenant-card-footer .btn-primary {
+      width: 100%;
+      text-align: center;
+    }
+  }

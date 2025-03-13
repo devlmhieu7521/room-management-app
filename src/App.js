@@ -23,6 +23,11 @@ import CreateRoomPage from './pages/spaces/boarding-houses/rooms/CreateRoomPage'
 import RoomDetailPage from './pages/spaces/boarding-houses/rooms/RoomDetailPage';
 import EditRoomPage from './pages/spaces/boarding-houses/rooms/EditRoomPage';
 
+import TenantListPage from './pages/tenants/TenantListPage';
+import AddTenantPage from './pages/tenants/AddTenantPage';
+import EditTenantPage from './pages/tenants/EditTenantPage';
+import TenantDetailPage from './pages/tenants/TenantDetailPage';
+
 // Import services
 import authService from './services/authService';
 
@@ -97,8 +102,14 @@ function App() {
                 </Route>
             </Route>
           </Route>
-        </Route>
-
+          {/* Tenant Management Routes */}
+          <Route path="tenants">
+            <Route index element={<TenantListPage />} />
+            <Route path="add" element={<AddTenantPage />} />
+            <Route path=":id" element={<TenantDetailPage />} />
+            <Route path="edit/:id" element={<EditTenantPage />} />
+            </Route>
+          </Route>
         {/* 404 Route */}
         <Route path="*" element={<NotFound />} />
       </Routes>

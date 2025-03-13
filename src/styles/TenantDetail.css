@@ -1,0 +1,257 @@
+/* Tenant detail styles */
+.tenant-detail-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+  }
+
+  .tenant-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 25px 30px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .tenant-basic-info {
+    display: flex;
+    align-items: center;
+  }
+
+  .tenant-avatar-large {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background-color: #4a6fdc;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-right: 20px;
+    flex-shrink: 0;
+  }
+
+  .tenant-header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 1.8rem;
+    color: #111827;
+  }
+
+  .status-badge-container {
+    margin-bottom: 12px;
+  }
+
+  .tenant-contact-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+
+  .contact-item {
+    display: flex;
+    align-items: center;
+  }
+
+  .contact-icon {
+    margin-right: 7px;
+  }
+
+  .contact-value {
+    color: #4b5563;
+  }
+
+  .tenant-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .tenant-detail-content {
+    padding: 30px;
+  }
+
+  .tenant-detail-section {
+    margin-bottom: 30px;
+    padding-bottom: 30px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .tenant-detail-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .tenant-detail-section h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.4rem;
+    color: #111827;
+  }
+
+  /* Housing assignment styles */
+  .housing-details {
+    background-color: #f9fafb;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .housing-info {
+    margin-bottom: 20px;
+  }
+
+  .housing-type {
+    font-size: 0.9rem;
+    color: #6b7280;
+    margin-bottom: 5px;
+  }
+
+  .housing-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 5px;
+  }
+
+  .housing-meta {
+    color: #4b5563;
+    font-size: 0.9rem;
+  }
+
+  .lease-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+
+  .lease-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lease-label {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-bottom: 3px;
+  }
+
+  .lease-value {
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .housing-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .no-housing {
+    background-color: #f9fafb;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .no-housing p {
+    margin-bottom: 15px;
+    color: #6b7280;
+  }
+
+  /* Detail grid */
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+  }
+
+  .detail-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .detail-label {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-bottom: 3px;
+  }
+
+  .detail-value {
+    font-weight: 500;
+    color: #111827;
+  }
+
+  .no-data {
+    color: #6b7280;
+    font-style: italic;
+  }
+
+  .notes-content {
+    background-color: #f9fafb;
+    padding: 15px;
+    border-radius: 8px;
+    color: #4b5563;
+    white-space: pre-wrap;
+  }
+
+  /* Buttons */
+  .btn-outline {
+    padding: 8px 16px;
+    background-color: transparent;
+    color: #4a6fdc;
+    border: 1px solid #4a6fdc;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-outline:hover {
+    background-color: #f0f5ff;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .tenant-detail-header {
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .tenant-actions {
+      width: 100%;
+      justify-content: flex-end;
+    }
+
+    .lease-info {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .detail-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 576px) {
+    .tenant-basic-info {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 15px;
+    }
+
+    .tenant-avatar-large {
+      margin-right: 0;
+    }
+
+    .tenant-header-content {
+      width: 100%;
+    }
+
+    .lease-info,
+    .detail-grid {
+      grid-template-columns: 1fr;
+    }
+  }
