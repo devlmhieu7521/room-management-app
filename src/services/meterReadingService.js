@@ -4,53 +4,59 @@ const meterReadingService = {
   // Add a new meter reading
   addMeterReading: async (spaceId, type, readingData) => {
     try {
-      // Fetch the current space data
-      const space = await spaceService.getSpaceById(spaceId);
+      // Check if this is a room ID (composite ID format: "boardingHouseId-room-roomNumber")
+      if (spaceId.includes('-room-')) {
+        const [boardingHouseId, _, roomNumber] = spaceId.split('-room-');
+        return await addRoomMeterReading(boardingHouseId, roomNumber, type, readingData);
+      } else {
+        // Original logic for regular spaces
+        const space = await spaceService.getSpaceById(spaceId);
 
-      if (!space) {
-        throw new Error('Space not found');
-      }
-
-      // Initialize meter readings array if it doesn't exist
-      if (!space.meterReadings) {
-        space.meterReadings = {
-          electricity: [],
-          water: []
-        };
-      }
-
-      // Validate reading type
-      if (type !== 'electricity' && type !== 'water') {
-        throw new Error('Invalid meter reading type');
-      }
-
-      // Create the new reading with a timestamp
-      const newReading = {
-        ...readingData,
-        // Ensure we have a complete ISO string date with time
-        readingDate: readingData.readingDate || new Date().toISOString(),
-        createdAt: new Date().toISOString()
-      };
-
-      // Add the reading to the appropriate array
-      const updatedReadings = [...(space.meterReadings[type] || []), newReading];
-
-      // Sort readings by date (newest first)
-      updatedReadings.sort((a, b) => new Date(b.readingDate) - new Date(a.readingDate));
-
-      // Update the space with the new readings
-      const updatedSpace = {
-        ...space,
-        meterReadings: {
-          ...space.meterReadings,
-          [type]: updatedReadings
+        if (!space) {
+          throw new Error('Space not found');
         }
-      };
 
-      // Save the updated space
-      await spaceService.updateSpace(spaceId, updatedSpace);
+        // Initialize meter readings array if it doesn't exist
+        if (!space.meterReadings) {
+          space.meterReadings = {
+            electricity: [],
+            water: []
+          };
+        }
 
-      return newReading;
+        // Validate reading type
+        if (type !== 'electricity' && type !== 'water') {
+          throw new Error('Invalid meter reading type');
+        }
+
+        // Create the new reading with a timestamp
+        const newReading = {
+          ...readingData,
+          // Ensure we have a complete ISO string date with time
+          readingDate: readingData.readingDate || new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        };
+
+        // Add the reading to the appropriate array
+        const updatedReadings = [...(space.meterReadings[type] || []), newReading];
+
+        // Sort readings by date (newest first)
+        updatedReadings.sort((a, b) => new Date(b.readingDate) - new Date(a.readingDate));
+
+        // Update the space with the new readings
+        const updatedSpace = {
+          ...space,
+          meterReadings: {
+            ...space.meterReadings,
+            [type]: updatedReadings
+          }
+        };
+
+        // Save the updated space
+        await spaceService.updateSpace(spaceId, updatedSpace);
+
+        return newReading;
+      }
     } catch (error) {
       console.error(`Error adding ${type} reading:`, error);
       throw error;
@@ -60,16 +66,23 @@ const meterReadingService = {
   // Get all meter readings for a space
   getMeterReadings: async (spaceId, type = null) => {
     try {
-      const space = await spaceService.getSpaceById(spaceId);
-
-      if (!space || !space.meterReadings) {
-        return type ? [] : { electricity: [], water: [] };
-      }
-
-      if (type) {
-        return space.meterReadings[type] || [];
+      // Check if this is a room ID (composite ID format: "boardingHouseId-room-roomNumber")
+      if (spaceId.includes('-room-')) {
+        const [boardingHouseId, _, roomNumber] = spaceId.split('-room-');
+        return await getRoomMeterReadings(boardingHouseId, roomNumber, type);
       } else {
-        return space.meterReadings;
+        // Original logic for regular spaces
+        const space = await spaceService.getSpaceById(spaceId);
+
+        if (!space || !space.meterReadings) {
+          return type ? [] : { electricity: [], water: [] };
+        }
+
+        if (type) {
+          return space.meterReadings[type] || [];
+        } else {
+          return space.meterReadings;
+        }
       }
     } catch (error) {
       console.error('Error fetching meter readings:', error);
@@ -216,5 +229,112 @@ const meterReadingService = {
     }
   }
 };
+
+// Helper function to get room meter readings
+async function getRoomMeterReadings(boardingHouseId, roomNumber, type = null) {
+  try {
+    const boardingHouse = await spaceService.getSpaceById(boardingHouseId);
+
+    if (!boardingHouse || !boardingHouse.rooms) {
+      return type ? [] : { electricity: [], water: [] };
+    }
+
+    // Find the specific room
+    const room = boardingHouse.rooms.find(r => r.roomNumber === roomNumber);
+
+    if (!room) {
+      throw new Error(`Room ${roomNumber} not found in boarding house ${boardingHouseId}`);
+    }
+
+    // Initialize meter readings if they don't exist
+    if (!room.meterReadings) {
+      room.meterReadings = { electricity: [], water: [] };
+    }
+
+    if (type) {
+      return room.meterReadings[type] || [];
+    } else {
+      return room.meterReadings;
+    }
+  } catch (error) {
+    console.error('Error fetching room meter readings:', error);
+    throw error;
+  }
+}
+
+// Helper function to add meter reading to a room
+async function addRoomMeterReading(boardingHouseId, roomNumber, type, readingData) {
+  try {
+    const boardingHouse = await spaceService.getSpaceById(boardingHouseId);
+
+    if (!boardingHouse || !boardingHouse.rooms) {
+      throw new Error(`Boarding house ${boardingHouseId} not found`);
+    }
+
+    // Find the room index
+    const roomIndex = boardingHouse.rooms.findIndex(r => r.roomNumber === roomNumber);
+
+    if (roomIndex === -1) {
+      throw new Error(`Room ${roomNumber} not found in boarding house ${boardingHouseId}`);
+    }
+
+    // Get the room
+    const room = boardingHouse.rooms[roomIndex];
+
+    // Initialize meter readings if they don't exist
+    if (!room.meterReadings) {
+      room.meterReadings = {
+        electricity: [],
+        water: []
+      };
+    }
+
+    // Validate reading type
+    if (type !== 'electricity' && type !== 'water') {
+      throw new Error('Invalid meter reading type');
+    }
+
+    // Create the new reading with a timestamp
+    const newReading = {
+      ...readingData,
+      // Ensure we have a complete ISO string date with time
+      readingDate: readingData.readingDate || new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
+
+    // Add the reading to the appropriate array
+    const updatedReadings = [...(room.meterReadings[type] || []), newReading];
+
+    // Sort readings by date (newest first)
+    updatedReadings.sort((a, b) => new Date(b.readingDate) - new Date(a.readingDate));
+
+    // Update the room with the new readings
+    const updatedRoom = {
+      ...room,
+      meterReadings: {
+        ...room.meterReadings,
+        [type]: updatedReadings
+      }
+    };
+
+    // Replace the room in the rooms array
+    const updatedRooms = [...boardingHouse.rooms];
+    updatedRooms[roomIndex] = updatedRoom;
+
+    // Update the boarding house with the updated rooms array
+    const updatedBoardingHouse = {
+      ...boardingHouse,
+      rooms: updatedRooms
+    };
+
+    // Save the updated boarding house
+    await spaceService.updateSpace(boardingHouseId, updatedBoardingHouse);
+
+    return newReading;
+  } catch (error) {
+    console.error(`Error adding ${type} reading to room:`, error);
+    throw error;
+  }
+}
 
 export default meterReadingService;

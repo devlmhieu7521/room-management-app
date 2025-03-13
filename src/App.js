@@ -90,11 +90,11 @@ function App() {
               <Route path="edit/:id" element={<EditBoardingHousePage />} />
 
               {/* Boarding House Room Routes */}
-              <Route path=":id/rooms">
+                <Route path=":id/rooms">
                 <Route path="create" element={<CreateRoomPage />} />
                 <Route path=":roomId" element={<RoomDetailPage />} />
                 <Route path=":roomId/edit" element={<EditRoomPage />} />
-              </Route>
+                </Route>
             </Route>
           </Route>
         </Route>

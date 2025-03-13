@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import meterReadingService from '../../services/meterReadingService';
+import spaceService from '../../services/spaceService';
 
-const MeterReadingForm = ({ spaceId, type, onReadingAdded, previousReading }) => {
+const MeterReadingForm = ({ spaceId, roomId, type, onReadingAdded, previousReading }) => {
   const [formData, setFormData] = useState({
     value: '',
     notes: ''
@@ -45,15 +45,22 @@ const MeterReadingForm = ({ spaceId, type, onReadingAdded, previousReading }) =>
     setSuccess(false);
 
     try {
+      console.log(`Adding ${type} meter reading for spaceId: ${spaceId}, roomId: ${roomId}`);
+
       // Parse the value to ensure it's a number
-      const readingData = {
-        ...formData,
+      const newReading = {
         value: parseFloat(formData.value),
-        // Automatically use current time
-        readingDate: new Date().toISOString()
+        notes: formData.notes,
+        readingDate: new Date().toISOString(),
+        createdAt: new Date().toISOString()
       };
 
-      const result = await meterReadingService.addMeterReading(spaceId, type, readingData);
+      // Check if this is a room reading or a regular space reading
+      if (roomId) {
+        await addRoomMeterReading(spaceId, roomId, type, newReading);
+      } else {
+        await addSpaceMeterReading(spaceId, type, newReading);
+      }
 
       // Clear the form
       setFormData({
@@ -65,13 +72,115 @@ const MeterReadingForm = ({ spaceId, type, onReadingAdded, previousReading }) =>
 
       // Notify parent component
       if (onReadingAdded) {
-        onReadingAdded(result);
+        onReadingAdded(newReading);
       }
     } catch (error) {
       console.error('Error adding meter reading:', error);
       setError('Failed to add meter reading. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Add a meter reading to a room within a boarding house
+  const addRoomMeterReading = async (boardingHouseId, roomId, type, reading) => {
+    try {
+      // Get the boarding house
+      const boardingHouse = await spaceService.getSpaceById(boardingHouseId);
+
+      if (!boardingHouse || !boardingHouse.rooms) {
+        throw new Error('Boarding house not found or has no rooms');
+      }
+
+      // Find the room
+      const roomIndex = boardingHouse.rooms.findIndex(r => r.roomNumber === roomId);
+
+      if (roomIndex === -1) {
+        throw new Error(`Room ${roomId} not found`);
+      }
+
+      // Get the room
+      const room = boardingHouse.rooms[roomIndex];
+
+      // Initialize meterReadings if they don't exist
+      if (!room.meterReadings) {
+        room.meterReadings = {
+          electricity: [],
+          water: []
+        };
+      }
+
+      // Add the new reading
+      const updatedReadings = [...(room.meterReadings[type] || []), reading];
+
+      // Update the room with the new readings
+      const updatedRoom = {
+        ...room,
+        meterReadings: {
+          ...room.meterReadings,
+          [type]: updatedReadings
+        }
+      };
+
+      // Update the room in the boarding house
+      const updatedRooms = [...boardingHouse.rooms];
+      updatedRooms[roomIndex] = updatedRoom;
+
+      // Update the boarding house
+      const updatedBoardingHouse = {
+        ...boardingHouse,
+        rooms: updatedRooms
+      };
+
+      // Save the boarding house
+      await spaceService.updateSpace(boardingHouseId, updatedBoardingHouse);
+
+      console.log(`${type} reading added successfully to room ${roomId}`);
+      return reading;
+    } catch (error) {
+      console.error(`Error adding room ${type} reading:`, error);
+      throw error;
+    }
+  };
+
+  // Add a meter reading to a regular space
+  const addSpaceMeterReading = async (spaceId, type, reading) => {
+    try {
+      // Get the space
+      const space = await spaceService.getSpaceById(spaceId);
+
+      if (!space) {
+        throw new Error('Space not found');
+      }
+
+      // Initialize meterReadings if they don't exist
+      if (!space.meterReadings) {
+        space.meterReadings = {
+          electricity: [],
+          water: []
+        };
+      }
+
+      // Add the new reading
+      const updatedReadings = [...(space.meterReadings[type] || []), reading];
+
+      // Update the space with the new readings
+      const updatedSpace = {
+        ...space,
+        meterReadings: {
+          ...space.meterReadings,
+          [type]: updatedReadings
+        }
+      };
+
+      // Save the space
+      await spaceService.updateSpace(spaceId, updatedSpace);
+
+      console.log(`${type} reading added successfully to space ${spaceId}`);
+      return reading;
+    } catch (error) {
+      console.error(`Error adding space ${type} reading:`, error);
+      throw error;
     }
   };
 

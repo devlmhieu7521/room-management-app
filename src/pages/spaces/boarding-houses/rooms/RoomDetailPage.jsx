@@ -35,20 +35,28 @@ const RoomDetailPage = () => {
           throw new Error('Room not found');
         }
 
-        // Create a room object that mimics a space for utilities tab
-        const roomAsSpace = {
-          id: `${id}-room-${roomId}`, // Create a unique ID for the room
+        // Make sure room has a meterReadings object
+        if (!roomData.meterReadings) {
+          roomData.meterReadings = {
+            electricity: [],
+            water: []
+          };
+        }
+
+        // Create a standalone utilities object for the room
+        // Using direct data from the room rather than a complex ID approach
+        const roomUtilitiesObj = {
+          id: id, // Use the boarding house ID directly
+          roomId: roomId, // Add roomId as a separate property
           name: `Room ${roomId}`,
           electricityPrice: roomData.electricityPrice || boardingHouseData.electricityPrice,
           waterPrice: roomData.waterPrice || boardingHouseData.waterPrice,
-          meterReadings: roomData.meterReadings || {
-            electricity: [],
-            water: []
-          }
+          // Include the room's meter readings directly
+          meterReadings: roomData.meterReadings
         };
 
         setRoom(roomData);
-        setRoomUtilities(roomAsSpace);
+        setRoomUtilities(roomUtilitiesObj);
       } catch (error) {
         console.error('Error fetching boarding house or room:', error);
         setError('Failed to load room details. Please try again.');

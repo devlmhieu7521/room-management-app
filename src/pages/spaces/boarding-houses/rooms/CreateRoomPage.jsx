@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import CreateRoomForm from '../../../../components/spaces/rooms/CreateRoomForm';
+import RoomForm from '../../../../components/spaces/rooms/RoomForm';
 import '../../../../styles/space.css';
 import '../../../../styles/boarding-house-styles.css';
 import '../../../../styles/modal.css';
@@ -33,7 +33,7 @@ const CreateRoomPage = () => {
           <span> Add New Room</span>
         </div>
 
-        <CreateRoomForm boardingHouseId={id} />
+        <RoomForm boardingHouseId={id} />
       </div>
     </div>
   );

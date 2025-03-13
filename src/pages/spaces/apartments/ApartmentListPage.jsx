@@ -159,13 +159,13 @@ const ApartmentListPage = () => {
 
                     <div className="space-card-footer">
                       <Link
-                        to={`/spaces/detail/${apartment.id}`}
+                        to={`/spaces/apartments/${apartment.id}`}
                         className="space-card-action view"
                       >
                         View Details
                       </Link>
                       <Link
-                        to={`/spaces/edit/${apartment.id}`}
+                        to={`/spaces/apartments/edit/${apartment.id}`}
                         className="space-card-action edit"
                       >
                         Edit

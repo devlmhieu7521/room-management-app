@@ -1,7 +1,8 @@
+// In UtilitiesTab.jsx, modify the component to handle room utilities:
+
 import React, { useState, useEffect } from 'react';
 import MeterReadingForm from './MeterReadingForm';
 import MeterReadingsList from './MeterReadingsList';
-import meterReadingService from '../../services/meterReadingService';
 import '../../styles/meter-readings.css';
 
 const UtilitiesTab = ({ space }) => {
@@ -21,56 +22,151 @@ const UtilitiesTab = ({ space }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchReadings = async () => {
+  // Load meter readings directly from the space object
+  const fetchReadings = () => {
     try {
       setLoading(true);
 
-      // Get all meter readings
-      const allReadings = await meterReadingService.getMeterReadings(space.id);
+      console.log("Space object received:", space);
 
-      // Sort readings by date (newest first)
-      const sortedElectricityReadings = allReadings.electricity
-        ? [...allReadings.electricity].sort((a, b) => new Date(b.readingDate) - new Date(a.readingDate))
+      // If meterReadings is undefined or null, initialize as empty
+      const meterReadings = space.meterReadings || { electricity: [], water: [] };
+
+      // Sort readings by date (newest first) if they exist
+      const sortElectricityReadings = meterReadings.electricity
+        ? [...meterReadings.electricity].sort((a, b) => new Date(b.readingDate) - new Date(a.readingDate))
         : [];
 
-      const sortedWaterReadings = allReadings.water
-        ? [...allReadings.water].sort((a, b) => new Date(b.readingDate) - new Date(a.readingDate))
+      const sortWaterReadings = meterReadings.water
+        ? [...meterReadings.water].sort((a, b) => new Date(b.readingDate) - new Date(a.readingDate))
         : [];
 
       setReadings({
-        electricity: sortedElectricityReadings,
-        water: sortedWaterReadings
+        electricity: sortElectricityReadings,
+        water: sortWaterReadings
       });
 
-      // Set latest readings
+      // Set latest readings (if any)
       setLatestReadings({
-        electricity: sortedElectricityReadings[0] || null,
-        water: sortedWaterReadings[0] || null
+        electricity: sortElectricityReadings[0] || null,
+        water: sortWaterReadings[0] || null
       });
 
-      // Get monthly consumption data
-      const electricityMonthly = await meterReadingService.getMonthlyConsumption(space.id, 'electricity');
-      const waterMonthly = await meterReadingService.getMonthlyConsumption(space.id, 'water');
+      // Calculate monthly consumption data if we have enough readings
+      calculateMonthlyData(sortElectricityReadings, sortWaterReadings);
 
-      setMonthlyData({
-        electricity: electricityMonthly,
-        water: waterMonthly
-      });
-
-    } catch (error) {
-      console.error('Error fetching meter readings:', error);
-      setError('Failed to load meter readings. Please try again.');
+      setError(null);
+    } catch (err) {
+      console.error("Error processing meter readings:", err);
+      setError("Failed to process meter readings. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  // Calculate monthly data from the readings
+  const calculateMonthlyData = (electricityReadings, waterReadings) => {
+    try {
+      // Only process if we have at least 2 readings
+      if (electricityReadings.length >= 2) {
+        // Group readings by month and calculate consumption
+        const electricityMonthly = processMonthlyData(electricityReadings);
+        const waterMonthly = processMonthlyData(waterReadings);
+
+        setMonthlyData({
+          electricity: electricityMonthly,
+          water: waterMonthly
+        });
+      } else {
+        setMonthlyData({
+          electricity: [],
+          water: []
+        });
+      }
+    } catch (err) {
+      console.error("Error calculating monthly data:", err);
+    }
+  };
+
+  // Process readings to calculate monthly consumption
+  const processMonthlyData = (readings) => {
+    if (!readings || readings.length < 2) return [];
+
+    // Sort readings by date (oldest first)
+    const sortedReadings = [...readings].sort((a, b) =>
+      new Date(a.readingDate) - new Date(b.readingDate)
+    );
+
+    // Group readings by month
+    const monthlyGroups = {};
+
+    sortedReadings.forEach(reading => {
+      const date = new Date(reading.readingDate);
+      const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+      if (!monthlyGroups[yearMonth]) {
+        monthlyGroups[yearMonth] = {
+          yearMonth,
+          year: date.getFullYear(),
+          month: date.getMonth() + 1,
+          readings: []
+        };
+      }
+
+      monthlyGroups[yearMonth].readings.push(reading);
+    });
+
+    // Calculate monthly consumption
+    const monthlyData = Object.values(monthlyGroups).map(group => {
+      // Sort readings within this month by date
+      const monthReadings = [...group.readings].sort((a, b) =>
+        new Date(a.readingDate) - new Date(b.readingDate)
+      );
+
+      const firstReading = monthReadings[0];
+      const lastReading = monthReadings[monthReadings.length - 1];
+      const consumption = lastReading.value - firstReading.value;
+
+      return {
+        yearMonth: group.yearMonth,
+        year: group.year,
+        month: group.month,
+        monthName: new Date(group.year, group.month - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' }),
+        firstReading,
+        lastReading,
+        consumption: consumption > 0 ? consumption : 0
+      };
+    });
+
+    // Sort by date (newest first)
+    return monthlyData.sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+  };
+
   useEffect(() => {
+    // Load readings when the component mounts or space changes
     fetchReadings();
-  }, [space.id]);
+  }, [space]);
 
   const handleReadingAdded = async (type, newReading) => {
-    await fetchReadings(); // Refetch all data to ensure everything is in sync
+    // When a new reading is added, add it to the appropriate array
+    const updatedReadings = {
+      ...readings,
+      [type]: [newReading, ...readings[type]]
+    };
+
+    setReadings(updatedReadings);
+
+    // Update latest readings
+    setLatestReadings(prev => ({
+      ...prev,
+      [type]: newReading
+    }));
+
+    // Recalculate monthly data
+    calculateMonthlyData(
+      type === 'electricity' ? updatedReadings.electricity : readings.electricity,
+      type === 'water' ? updatedReadings.water : readings.water
+    );
   };
 
   // Format date and time for display
@@ -226,49 +322,63 @@ const UtilitiesTab = ({ space }) => {
         <div className="utility-tab-content">
           <div className="monthly-summaries">
             <h3>Monthly Consumption Summary</h3>
-            <div className="table-container">
-              <table className="readings-table">
-                <thead>
-                  <tr>
-                    <th>Month</th>
-                    <th>Electricity Consumption</th>
-                    <th>Electricity Cost</th>
-                    <th>Water Consumption</th>
-                    <th>Water Cost</th>
-                    <th>Total Cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {monthlyData.electricity.map((month, index) => {
-                    // Find matching water data for the same month
-                    const waterMonth = monthlyData.water.find(m => m.yearMonth === month.yearMonth);
+            {monthlyData.electricity.length > 0 || monthlyData.water.length > 0 ? (
+              <div className="table-container">
+                <table className="readings-table">
+                  <thead>
+                    <tr>
+                      <th>Month</th>
+                      <th>Electricity Consumption</th>
+                      <th>Electricity Cost</th>
+                      <th>Water Consumption</th>
+                      <th>Water Cost</th>
+                      <th>Total Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyData.electricity.length > 0 ? (
+                      monthlyData.electricity.map((month, index) => {
+                        // Find matching water data for the same month
+                        const waterMonth = monthlyData.water.find(m => m.yearMonth === month.yearMonth);
 
-                    const electricityCost = month.consumption * space.electricityPrice;
-                    const waterCost = waterMonth ? waterMonth.consumption * space.waterPrice : 0;
-                    const totalCost = electricityCost + waterCost;
+                        const electricityCost = month.consumption * space.electricityPrice;
+                        const waterCost = waterMonth ? waterMonth.consumption * space.waterPrice : 0;
+                        const totalCost = electricityCost + waterCost;
 
-                    return (
-                      <tr key={index}>
-                        <td>{month.monthName}</td>
-                        <td>{month.consumption.toFixed(2)} kWh</td>
-                        <td>{electricityCost.toLocaleString()} VND</td>
-                        <td>
-                          {waterMonth
-                            ? `${waterMonth.consumption.toFixed(2)} m³`
-                            : '—'}
+                        return (
+                          <tr key={index}>
+                            <td>{month.monthName}</td>
+                            <td>{month.consumption.toFixed(2)} kWh</td>
+                            <td>{electricityCost.toLocaleString()} VND</td>
+                            <td>
+                              {waterMonth
+                                ? `${waterMonth.consumption.toFixed(2)} m³`
+                                : '—'}
+                            </td>
+                            <td>
+                              {waterMonth
+                                ? `${waterCost.toLocaleString()} VND`
+                                : '—'}
+                            </td>
+                            <td>{totalCost.toLocaleString()} VND</td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="6" style={{textAlign: 'center'}}>
+                          No monthly consumption data available yet. Add at least two readings to see consumption.
                         </td>
-                        <td>
-                          {waterMonth
-                            ? `${waterCost.toLocaleString()} VND`
-                            : '—'}
-                        </td>
-                        <td>{totalCost.toLocaleString()} VND</td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="no-data-message">
+                <p>No monthly consumption data available yet. Add at least two readings to see consumption.</p>
+              </div>
+            )}
           </div>
 
           <div className="utility-actions">
@@ -293,6 +403,7 @@ const UtilitiesTab = ({ space }) => {
         <div className="utility-tab-content">
           <MeterReadingForm
             spaceId={space.id}
+            roomId={space.roomId}
             type="electricity"
             onReadingAdded={(reading) => handleReadingAdded('electricity', reading)}
             previousReading={latestReadings.electricity}
@@ -310,6 +421,7 @@ const UtilitiesTab = ({ space }) => {
         <div className="utility-tab-content">
           <MeterReadingForm
             spaceId={space.id}
+            roomId={space.roomId}
             type="water"
             onReadingAdded={(reading) => handleReadingAdded('water', reading)}
             previousReading={latestReadings.water}
