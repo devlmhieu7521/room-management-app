@@ -1,48 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import tenantService from '../../services/tenantService';
+import TenantAssignmentModal from './TenantAssignmentModal';
 import '../../styles/SpaceTenantsTab.css';
 
 const SpaceTenantsTab = ({ space, isRoom = false, roomId = null, boardingHouseId = null }) => {
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const fetchTenants = async () => {
+    try {
+      setLoading(true);
+
+      // For apartments, fetch by space_id
+      // For rooms, fetch by boarding_house_id and room_id
+      let spaceTenants = [];
+
+      if (isRoom) {
+        // Get all tenants and filter for this room
+        const allTenants = await tenantService.getAllTenants();
+        spaceTenants = allTenants.filter(tenant =>
+          tenant.space_type === 'room' &&
+          tenant.boarding_house_id === boardingHouseId &&
+          tenant.room_id === roomId &&
+          tenant.status === 'active'
+        );
+      } else {
+        // Get all tenants and filter for this apartment
+        const allTenants = await tenantService.getAllTenants();
+        spaceTenants = allTenants.filter(tenant =>
+          tenant.space_type === 'apartment' &&
+          tenant.space_id === space.id &&
+          tenant.status === 'active'
+        );
+      }
+
+      setTenants(spaceTenants);
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching tenants:', error);
+      setError('Failed to load tenant information. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchTenants = async () => {
-      try {
-        setLoading(true);
-
-        // For apartments, fetch by space_id
-        // For rooms, fetch by boarding_house_id and room_id
-        let spaceTenants = [];
-
-        if (isRoom) {
-          // Get all tenants and filter for this room
-          const allTenants = await tenantService.getAllTenants();
-          spaceTenants = allTenants.filter(tenant =>
-            tenant.space_type === 'room' &&
-            tenant.boarding_house_id === boardingHouseId &&
-            tenant.room_id === roomId
-          );
-        } else {
-          // Get all tenants and filter for this apartment
-          const allTenants = await tenantService.getAllTenants();
-          spaceTenants = allTenants.filter(tenant =>
-            tenant.space_type === 'apartment' &&
-            tenant.space_id === space.id
-          );
-        }
-
-        setTenants(spaceTenants);
-      } catch (error) {
-        console.error('Error fetching tenants:', error);
-        setError('Failed to load tenant information. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTenants();
   }, [space.id, isRoom, roomId, boardingHouseId]);
 
@@ -51,6 +56,11 @@ const SpaceTenantsTab = ({ space, isRoom = false, roomId = null, boardingHouseId
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString();
+  };
+
+  const handleTenantAssigned = () => {
+    // Refresh the tenant list after assignment
+    fetchTenants();
   };
 
   if (loading) {
@@ -67,16 +77,47 @@ const SpaceTenantsTab = ({ space, isRoom = false, roomId = null, boardingHouseId
       <div className="empty-tab-state">
         <h3>No Tenants Assigned</h3>
         <p>This {isRoom ? 'room' : 'apartment'} doesn't have any tenants assigned yet.</p>
-        <Link to={`/tenants/add?${isRoom ? `roomId=${roomId}&boardingHouseId=${boardingHouseId}` : `spaceId=${space.id}`}`}
-          className="btn-primary">
+        <button
+          className="btn-primary"
+          onClick={() => setIsModalOpen(true)}
+        >
           Assign Tenant
-        </Link>
+        </button>
+
+        {/* Tenant Assignment Modal */}
+        <TenantAssignmentModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          spaceId={isRoom ? null : space.id}
+          roomId={isRoom ? roomId : null}
+          boardingHouseId={isRoom ? boardingHouseId : null}
+          onAssignTenant={handleTenantAssigned}
+        />
       </div>
     );
   }
 
   return (
     <div className="space-tenants-tab">
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+        <button
+          className="btn-primary"
+          onClick={() => setIsModalOpen(true)}
+        >
+          Assign Additional Tenant
+        </button>
+
+        {/* Tenant Assignment Modal */}
+        <TenantAssignmentModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          spaceId={isRoom ? null : space.id}
+          roomId={isRoom ? roomId : null}
+          boardingHouseId={isRoom ? boardingHouseId : null}
+          onAssignTenant={handleTenantAssigned}
+        />
+      </div>
+
       {tenants.map(tenant => (
         <div key={tenant.id} className="tenant-card">
           <div className="tenant-card-header">

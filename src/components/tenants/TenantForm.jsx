@@ -3,7 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import tenantService from '../../services/tenantService';
 import '../../styles/TenantForm.css';
 
-const TenantForm = ({ editMode = false, initialTenantId = null, preselectedSpace = null }) => {
+const TenantForm = ({
+  editMode = false,
+  initialTenantId = null,
+  preselectedSpace = null,
+  inModal = false,
+  onTenantCreated = null,
+  onCancel = null
+}) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('personal');
   const [availableSpaces, setAvailableSpaces] = useState({ apartments: [], rooms: [] });
@@ -236,14 +243,23 @@ const TenantForm = ({ editMode = false, initialTenantId = null, preselectedSpace
     setIsSubmitting(true);
 
     try {
+      let tenantId;
+
       if (editMode) {
         await tenantService.updateTenant(initialTenantId, formData);
+        tenantId = initialTenantId;
       } else {
-        await tenantService.createTenant(formData);
+        const newTenant = await tenantService.createTenant(formData);
+        tenantId = newTenant.id;
       }
 
-      // Redirect to tenants list
-      navigate('/tenants');
+      // If in modal mode, call the callback
+      if (inModal && onTenantCreated) {
+        onTenantCreated(tenantId);
+      } else {
+        // Otherwise redirect to tenants list
+        navigate('/tenants');
+      }
     } catch (error) {
       console.error('Error saving tenant:', error);
       setErrors({
@@ -256,9 +272,216 @@ const TenantForm = ({ editMode = false, initialTenantId = null, preselectedSpace
 
   // Handle cancel button
   const handleCancel = () => {
-    navigate('/tenants');
+    if (inModal && onCancel) {
+      onCancel();
+    } else {
+      navigate('/tenants');
+    }
   };
 
+  // Set default dates if none provided
+  useEffect(() => {
+    if (spaceType !== 'none' && !formData.start_date) {
+      const today = new Date().toISOString().split('T')[0];
+      const nextYear = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0];
+
+      setFormData(prev => ({
+        ...prev,
+        start_date: today,
+        end_date: nextYear
+      }));
+    }
+  }, [spaceType, formData.start_date]);
+
+  // Simplified form for modal view
+  if (inModal) {
+    return (
+      <div className="tenant-form-container" style={{ marginBottom: 0 }}>
+        <div className="tenant-form" style={{ boxShadow: 'none', padding: 0 }}>
+          {errors.submit && (
+            <div className="error-message">{errors.submit}</div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            {/* Personal Information */}
+            <div className="form-section">
+              <h4 style={{ marginTop: 0 }}>Personal Information</h4>
+              <div className="form-row">
+                <div className="form-group half">
+                  <label htmlFor="first_name">First Name*</label>
+                  <input
+                    type="text"
+                    id="first_name"
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleChange}
+                    placeholder="Enter first name"
+                  />
+                  {errors.first_name && <div className="error">{errors.first_name}</div>}
+                </div>
+
+                <div className="form-group half">
+                  <label htmlFor="last_name">Last Name*</label>
+                  <input
+                    type="text"
+                    id="last_name"
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleChange}
+                    placeholder="Enter last name"
+                  />
+                  {errors.last_name && <div className="error">{errors.last_name}</div>}
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group half">
+                  <label htmlFor="email">Email Address*</label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="Enter email address"
+                  />
+                  {errors.email && <div className="error">{errors.email}</div>}
+                </div>
+
+                <div className="form-group half">
+                  <label htmlFor="phone_number">Phone Number*</label>
+                  <input
+                    type="text"
+                    id="phone_number"
+                    name="phone_number"
+                    value={formData.phone_number}
+                    onChange={handleChange}
+                    placeholder="Enter phone number"
+                  />
+                  {errors.phone_number && <div className="error">{errors.phone_number}</div>}
+                </div>
+              </div>
+            </div>
+
+            {/* Housing Assignment */}
+            <div className="form-section">
+              <h4>Housing Assignment</h4>
+              {/* Housing details are pre-filled from preselectedSpace */}
+              <div className="form-row">
+                <div className="form-group half">
+                  <label htmlFor="start_date">Lease Start Date*</label>
+                  <input
+                    type="date"
+                    id="start_date"
+                    name="start_date"
+                    value={formData.start_date}
+                    onChange={handleChange}
+                  />
+                  {errors.start_date && <div className="error">{errors.start_date}</div>}
+                </div>
+
+                <div className="form-group half">
+                  <label htmlFor="end_date">Lease End Date*</label>
+                  <input
+                    type="date"
+                    id="end_date"
+                    name="end_date"
+                    value={formData.end_date}
+                    onChange={handleChange}
+                  />
+                  {errors.end_date && <div className="error">{errors.end_date}</div>}
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group half">
+                  <label htmlFor="rent_amount">Monthly Rent (VND)*</label>
+                  <input
+                    type="number"
+                    id="rent_amount"
+                    name="rent_amount"
+                    value={formData.rent_amount}
+                    onChange={handleChange}
+                    min="0"
+                  />
+                  {errors.rent_amount && <div className="error">{errors.rent_amount}</div>}
+                </div>
+
+                <div className="form-group half">
+                  <label htmlFor="security_deposit">Security Deposit (VND)</label>
+                  <input
+                    type="number"
+                    id="security_deposit"
+                    name="security_deposit"
+                    value={formData.security_deposit}
+                    onChange={handleChange}
+                    min="0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Identification (Required) */}
+            <div className="form-section">
+              <h4>Identification</h4>
+              <div className="form-row">
+                <div className="form-group half">
+                  <label htmlFor="identification.type">ID Type</label>
+                  <select
+                    id="identification.type"
+                    name="identification.type"
+                    value={formData.identification.type}
+                    onChange={handleChange}
+                  >
+                    <option value="national_id">National ID</option>
+                    <option value="passport">Passport</option>
+                    <option value="driver_license">Driver's License</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div className="form-group half">
+                  <label htmlFor="identification.number">ID Number*</label>
+                  <input
+                    type="text"
+                    id="identification.number"
+                    name="identification.number"
+                    value={formData.identification.number}
+                    onChange={handleChange}
+                    placeholder="Enter ID number"
+                  />
+                  {errors['identification.number'] && (
+                    <div className="error">{errors['identification.number']}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={handleCancel}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="button-primary"
+                disabled={isSubmitting}
+              >
+                {isSubmitting
+                  ? 'Saving...'
+                  : 'Save Tenant'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Full form for regular page view
   return (
     <div className="tenant-form-container">
       <div className="tenant-form">
