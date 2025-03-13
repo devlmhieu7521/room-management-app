@@ -16,6 +16,8 @@ import './styles/modal.css';
 import './styles/page.css';
 import './styles/space-detail.css';
 import './styles/meter-readings.css';
+// Import new room management styles
+import './styles/room-management.css';
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {

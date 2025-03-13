@@ -105,24 +105,46 @@ const SpaceList = () => {
                 <div className={`space-card-status ${space.status}`}>
                   {space.status}
                 </div>
+                <div className="property-type-tag">
+                  {space.propertyType === 'boarding_house' ? 'Boarding House' : 'Apartment'}
+                </div>
               </div>
               <div className="space-card-body">
                 <h3 className="space-card-title">{space.name}</h3>
                 <p className="space-card-address">{formatAddress(space.address)}</p>
 
                 <div className="space-card-details">
-                  <div className="space-card-detail-item">
-                    <span className="space-card-detail-icon">📏</span>
-                    <span className="space-card-detail-text">
-                      {space.squareMeters} m²
-                    </span>
-                  </div>
-                  <div className="space-card-detail-item">
-                    <span className="space-card-detail-icon">👥</span>
-                    <span className="space-card-detail-text">
-                      Max {space.maxOccupancy} {space.maxOccupancy > 1 ? 'people' : 'person'}
-                    </span>
-                  </div>
+                  {space.propertyType === 'boarding_house' ? (
+                    <>
+                      <div className="space-card-detail-item">
+                        <span className="space-card-detail-icon">🏠</span>
+                        <span className="space-card-detail-text">
+                          {space.rooms?.length || 0} rooms
+                        </span>
+                      </div>
+                      <div className="space-card-detail-item">
+                        <span className="space-card-detail-icon">🔑</span>
+                        <span className="space-card-detail-text">
+                          {space.rooms?.filter(room => room.status === 'available').length || 0} available
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-card-detail-item">
+                        <span className="space-card-detail-icon">📏</span>
+                        <span className="space-card-detail-text">
+                          {space.squareMeters} m²
+                        </span>
+                      </div>
+                      <div className="space-card-detail-item">
+                        <span className="space-card-detail-icon">👥</span>
+                        <span className="space-card-detail-text">
+                          Max {space.maxOccupancy} {space.maxOccupancy > 1 ? 'people' : 'person'}
+                        </span>
+                      </div>
+                    </>
+                  )}
                   <div className="space-card-detail-item">
                     <span className="space-card-detail-icon">⚡</span>
                     <span className="space-card-detail-text">

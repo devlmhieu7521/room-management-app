@@ -1,0 +1,392 @@
+/* Room management styles for boarding houses */
+
+/* Room listing table */
+.rooms-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+  }
+
+  .rooms-table th,
+  .rooms-table td {
+    border: 1px solid #e5e7eb;
+    padding: 10px 15px;
+    text-align: left;
+  }
+
+  .rooms-table th {
+    background-color: #f3f4f6;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .rooms-table tbody tr:nth-child(even) {
+    background-color: #f9fafb;
+  }
+
+  .room-thumbnail {
+    width: 50px;
+    height: 50px;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .room-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .room-thumbnail.empty {
+    background-color: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: #9ca3af;
+    text-align: center;
+  }
+
+  /* Room form */
+  .room-form {
+    background-color: #f9fafb;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 1px solid #e5e7eb;
+  }
+
+  .room-form h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    color: #111827;
+  }
+
+  .room-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+    gap: 10px;
+  }
+
+  /* Room image upload styles */
+  .room-image-upload {
+    padding: 15px;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    min-height: 100px;
+  }
+
+  .room-image-upload .upload-icon {
+    font-size: 24px;
+    margin-bottom: 10px;
+  }
+
+  .room-image-upload .upload-text h4 {
+    font-size: 1rem;
+  }
+
+  .room-image-upload .upload-text p {
+    font-size: 0.9rem;
+  }
+
+  .room-image-previews {
+    margin-top: 15px;
+    margin-bottom: 20px;
+  }
+
+  .room-image-previews .image-preview-item {
+    width: 100px;
+    height: 100px;
+  }
+
+  .no-rooms-message {
+    background-color: #f9fafb;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    color: #6b7280;
+    margin-bottom: 20px;
+  }
+
+  /* Small buttons for room actions */
+  .btn-sm {
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin-right: 5px;
+    cursor: pointer;
+  }
+
+  .btn-sm.edit {
+    background-color: #4a6fdc;
+    color: white;
+    border: none;
+  }
+
+  .btn-sm.delete {
+    background-color: white;
+    color: #ef4444;
+    border: 1px solid #ef4444;
+  }
+
+  .btn-sm.edit:hover {
+    background-color: #3d5cba;
+  }
+
+  .btn-sm.delete:hover {
+    background-color: #fee2e2;
+  }
+
+  /* Property type styles */
+  .property-type-select {
+    display: flex;
+    margin-bottom: 20px;
+  }
+
+  .property-type-option {
+    flex: 1;
+    padding: 15px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    margin-right: 10px;
+    transition: all 0.2s;
+  }
+
+  .property-type-option:last-child {
+    margin-right: 0;
+  }
+
+  .property-type-option.selected {
+    border-color: #4a6fdc;
+    background-color: rgba(74, 111, 220, 0.05);
+  }
+
+  .property-type-option h4 {
+    margin-top: 0;
+    color: #374151;
+  }
+
+  .property-type-option p {
+    color: #6b7280;
+    font-size: 0.9rem;
+  }
+
+  .property-type-icon {
+    font-size: 24px;
+    margin-bottom: 10px;
+  }
+
+  /* Property type tag in space card */
+  .property-type-tag {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 0.75rem;
+    padding: 5px 10px;
+    border-radius: 4px;
+    z-index: 5;
+  }
+
+  /* Room card styles for boarding house detail page */
+  .property-type-badge {
+    display: inline-block;
+    background-color: #f3f4f6;
+    color: #374151;
+    font-size: 0.9rem;
+    padding: 5px 10px;
+    border-radius: 4px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+  }
+
+  .room-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .room-list-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #111827;
+  }
+
+  .room-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+
+  .room-card {
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    transition: transform 0.2s;
+  }
+
+  .room-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .room-card.available {
+    border-left: 4px solid #10b981;
+  }
+
+  .room-card.occupied {
+    border-left: 4px solid #f59e0b;
+  }
+
+  .room-card.maintenance {
+    border-left: 4px solid #ef4444;
+  }
+
+  .room-card-image {
+    height: 150px;
+    overflow: hidden;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .room-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+  }
+
+  .room-card:hover .room-card-image img {
+    transform: scale(1.05);
+  }
+
+  .room-card-header {
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .room-card-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #111827;
+  }
+
+  .room-status-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .room-status-badge.available {
+    background-color: #dcfce7;
+    color: #16a34a;
+  }
+
+  .room-status-badge.occupied {
+    background-color: #fef3c7;
+    color: #d97706;
+  }
+
+  .room-status-badge.maintenance {
+    background-color: #fee2e2;
+    color: #dc2626;
+  }
+
+  .room-card-details {
+    padding: 15px;
+  }
+
+  .room-detail {
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+  }
+
+  .room-detail-label {
+    font-weight: 500;
+    color: #4b5563;
+    margin-right: 5px;
+  }
+
+  .room-detail-value {
+    color: #111827;
+  }
+
+  .room-detail.description {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .room-detail.description .room-detail-label {
+    margin-bottom: 5px;
+  }
+
+  .room-detail.description .room-detail-value {
+    color: #6b7280;
+    font-style: italic;
+    font-size: 0.9rem;
+  }
+
+  .room-card-actions {
+    padding: 15px;
+    border-top: 1px solid #f3f4f6;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .btn-secondary.disabled {
+    background-color: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  .room-occupancy-tag {
+    display: flex;
+    align-items: center;
+    margin-top: 15px;
+  }
+
+  .room-occupancy-tag .tenant-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #4a6fdc;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-right: 8px;
+  }
+
+  .room-occupancy-tag .tenant-name {
+    font-size: 0.9rem;
+    color: #111827;
+    font-weight: 500;
+  }
+
+  .room-vacant-tag {
+    color: #10b981;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    margin-top: 15px;
+  }
+
+  .room-vacant-tag svg {
+    margin-right: 5px;
+  }
