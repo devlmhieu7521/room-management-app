@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import SpaceListSwitcher from '../../components/spaces/SpaceListSwitcher';
-import spaceService from '../../services/spaceService';
-import authService from '../../services/authService';
+import SpaceListSwitcher from '../../../components/spaces/SpaceListSwitcher';
+import spaceService from '../../../services/spaceService';
+import authService from '../../../services/authService';
 
 const ApartmentListPage = () => {
   const [apartments, setApartments] = useState([]);
@@ -76,7 +76,7 @@ const ApartmentListPage = () => {
     <div className="page-container">
       <div className="page-header">
         <div className="container">
-          <h1>Manage Your Spaces</h1>
+          <h1>Manage Your Apartments</h1>
           <p>View, create, edit, and manage your rental spaces.</p>
         </div>
       </div>
@@ -94,7 +94,7 @@ const ApartmentListPage = () => {
             {apartments.length === 0 ? (
               <div className="empty-state">
                 <p>You haven't created any apartments yet.</p>
-                <Link to="/spaces/apartments/create" className="btn">
+                <Link to="/spaces/create" state={{ propertyType: 'apartment' }} className="btn">
                   Create Your First Apartment
                 </Link>
               </div>
@@ -159,13 +159,13 @@ const ApartmentListPage = () => {
 
                     <div className="space-card-footer">
                       <Link
-                        to={`/spaces/apartments/${apartment.id}`}
+                        to={`/spaces/detail/${apartment.id}`}
                         className="space-card-action view"
                       >
                         View Details
                       </Link>
                       <Link
-                        to={`/spaces/apartments/edit/${apartment.id}`}
+                        to={`/spaces/edit/${apartment.id}`}
                         className="space-card-action edit"
                       >
                         Edit

@@ -59,6 +59,33 @@
     justify-content: flex-end;
   }
 
+  /* Occupancy bar for boarding houses */
+  .space-card-occupancy-bar {
+    display: flex;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    background-color: #e5e7eb;
+    margin-top: 15px;
+    margin-bottom: 5px;
+  }
+
+  .occupancy-segment {
+    height: 100%;
+  }
+
+  .occupancy-segment.available {
+    background-color: #10b981;
+  }
+
+  .occupancy-segment.occupied {
+    background-color: #f59e0b;
+  }
+
+  .occupancy-segment.maintenance {
+    background-color: #ef4444;
+  }
+
   /* Responsive adjustments */
   @media (max-width: 768px) {
     .switcher-tabs {
