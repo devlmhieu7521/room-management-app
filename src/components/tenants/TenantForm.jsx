@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import tenantService from '../../services/tenantService';
-import './TenantForm.css';
+import '../../styles/TenantForm.css';
 
-const TenantForm = ({ editMode = false, initialTenantId = null }) => {
+const TenantForm = ({ editMode = false, initialTenantId = null, preselectedSpace = null }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('personal');
   const [availableSpaces, setAvailableSpaces] = useState({ apartments: [], rooms: [] });
@@ -40,7 +40,7 @@ const TenantForm = ({ editMode = false, initialTenantId = null }) => {
     status: 'active'
   });
 
-  // Load available spaces and tenant data if in edit mode
+  // Load available spaces, tenant data if in edit mode, and preselected space if provided
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -58,13 +58,52 @@ const TenantForm = ({ editMode = false, initialTenantId = null }) => {
             setSpaceType(tenant.space_type);
           }
         }
+        // If a preselected space is provided
+        else if (preselectedSpace) {
+          if (preselectedSpace.spaceId) {
+            // Preselected apartment
+            setSpaceType('apartment');
+            const apartment = spaces.apartments.find(apt => apt.id === preselectedSpace.spaceId);
+            if (apartment) {
+              setFormData(prev => ({
+                ...prev,
+                space_id: apartment.id,
+                space_type: 'apartment',
+                space_name: apartment.name,
+                rent_amount: apartment.monthlyRent || 0
+              }));
+              // Automatically go to housing tab
+              setActiveTab('housing');
+            }
+          } else if (preselectedSpace.roomId && preselectedSpace.boardingHouseId) {
+            // Preselected room in boarding house
+            setSpaceType('room');
+            const room = spaces.rooms.find(r =>
+              r.id === preselectedSpace.roomId &&
+              r.boardingHouseId === preselectedSpace.boardingHouseId
+            );
+            if (room) {
+              setFormData(prev => ({
+                ...prev,
+                space_id: room.id,
+                space_type: 'room',
+                room_id: room.id,
+                boarding_house_id: room.boardingHouseId,
+                boarding_house_name: room.boardingHouseName,
+                rent_amount: room.monthlyRent || 0
+              }));
+              // Automatically go to housing tab
+              setActiveTab('housing');
+            }
+          }
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
       }
     };
 
     fetchData();
-  }, [editMode, initialTenantId]);
+  }, [editMode, initialTenantId, preselectedSpace]);
 
   // Handle form input changes
   const handleChange = (e) => {

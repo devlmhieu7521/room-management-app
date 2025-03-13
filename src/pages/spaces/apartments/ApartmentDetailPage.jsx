@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import spaceService from '../../../services/spaceService';
 import UtilitiesTab from '../../../components/spaces/UtilitiesTab';
-import SpaceTenantsTab from '../../components/spaces/SpaceTenantsTab';
+import SpaceTenantsTab from '../../../components/spaces/SpaceTenantsTab';
 import '../../../styles/space-detail.css';
 import '../../../styles/meter-readings.css';
 
@@ -254,7 +254,7 @@ const ApartmentDetailPage = () => {
         )}
 
         {activeTab === 'tenants' && (
-        <SpaceTenantsTab space={apartment} />
+          <SpaceTenantsTab space={apartment} />
         )}
 
         {activeTab === 'billing' && (

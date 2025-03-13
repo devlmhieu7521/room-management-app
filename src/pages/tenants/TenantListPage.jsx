@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import tenantService from '../../services/tenantService';
-import './TenantList.css';
+import '../../styles/TenantList.css';
 
 const TenantListPage = () => {
   const [tenants, setTenants] = useState([]);

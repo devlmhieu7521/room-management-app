@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import tenantService from '../../services/tenantService';
 import spaceService from '../../services/spaceService';
-import './TenantDetail.css';
+import '../../styles/TenantDetail.css';
 
 const TenantDetailPage = () => {
   const { id } = useParams();

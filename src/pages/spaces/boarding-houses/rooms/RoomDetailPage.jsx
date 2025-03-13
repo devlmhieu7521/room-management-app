@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import spaceService from '../../../../services/spaceService';
 import meterReadingService from '../../../../services/meterReadingService';
-import SpaceTenantsTab from '../../../components/spaces/SpaceTenantsTab';
+import SpaceTenantsTab from '../../../../components/spaces/SpaceTenantsTab';
 import UtilitiesTab from '../../../../components/spaces/UtilitiesTab';
 import '../../../../styles/space-detail.css';
 import '../../../../styles/meter-readings.css';

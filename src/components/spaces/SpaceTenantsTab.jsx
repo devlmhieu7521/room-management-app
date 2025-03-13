@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import tenantService from '../../services/tenantService';
-import './SpaceTenantsTab.css';
+import '../../styles/SpaceTenantsTab.css';
 
 const SpaceTenantsTab = ({ space, isRoom = false, roomId = null, boardingHouseId = null }) => {
   const [tenants, setTenants] = useState([]);

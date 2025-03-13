@@ -1,3 +1,4 @@
+// Fix for AddTenantPage.jsx
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import TenantForm from '../../components/tenants/TenantForm';

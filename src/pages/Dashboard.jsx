@@ -2,27 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import authService from '../services/authService';
 import spaceService from '../services/spaceService';
-import './Dashboard.css';
 import tenantService from '../services/tenantService';
+import './Dashboard.css';
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
-  const [info, setInfo] = useState({
-    spaces: {
-      apartments: [],
-      boardingHouses: []
-    },
-    tenants: {
-      active: 0,
-      pending: 0,
-      inactive: 0,
-      total: 0
-    }
+  const [spaces, setSpaces] = useState({
+    apartments: [],
+    boardingHouses: []
+  });
+  const [tenants, setTenants] = useState({
+    active: 0,
+    pending: 0,
+    inactive: 0,
+    total: 0
   });
   const [loading, setLoading] = useState(true);
 
-  // Update the useEffect function to fetch tenant stats as well
-useEffect(() => {
+  useEffect(() => {
     // Get current user
     const currentUser = authService.getCurrentUser();
     if (currentUser) {
@@ -47,17 +44,16 @@ useEffect(() => {
         const pendingCount = tenantsData.filter(tenant => tenant.status === 'pending').length;
         const inactiveCount = tenantsData.filter(tenant => tenant.status === 'inactive').length;
 
-        setInfo({
-          spaces: {
-            apartments,
-            boardingHouses
-          },
-          tenants: {
-            active: activeCount,
-            pending: pendingCount,
-            inactive: inactiveCount,
-            total: tenantsData.length
-          }
+        setSpaces({
+          apartments,
+          boardingHouses
+        });
+
+        setTenants({
+          active: activeCount,
+          pending: pendingCount,
+          inactive: inactiveCount,
+          total: tenantsData.length
         });
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -110,7 +106,8 @@ useEffect(() => {
 
     return {
       apartmentStats,
-      boardingHouseStats
+      boardingHouseStats,
+      tenantStats: tenants
     };
   };
 
@@ -165,21 +162,24 @@ useEffect(() => {
             </p>
           </div>
         </div>
+
         <div className="stat-card">
-            <div className="stat-icon">👥</div>
-            <div className="stat-content">
+          <div className="stat-icon">👥</div>
+          <div className="stat-content">
             <h3>Total Tenants</h3>
-            <p className="stat-number">{stats.tenants.total}</p>
-            </div>
+            <p className="stat-number">{tenants.total}</p>
+          </div>
         </div>
+
         <div className="stat-card">
-            <div className="stat-icon">✅</div>
-            <div className="stat-content">
+          <div className="stat-icon">✅</div>
+          <div className="stat-content">
             <h3>Active Tenants</h3>
-            <p className="stat-number">{stats.tenants.active}</p>
-            </div>
+            <p className="stat-number">{tenants.active}</p>
+          </div>
         </div>
       </div>
+
       <div className="dashboard-actions">
         <div className="action-card">
           <h3>Manage Properties</h3>
@@ -310,6 +310,22 @@ useEffect(() => {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Tenants Section - New addition */}
+          {tenants.total > 0 && (
+            <div className="recent-spaces">
+              <div className="section-header">
+                <h2>Recent Tenants</h2>
+                <Link to="/tenants" className="view-all-link">View All</Link>
+              </div>
+              <div className="empty-state-card">
+                <p>View all tenant information from the Tenants page.</p>
+                <div className="action-links">
+                  <Link to="/tenants" className="btn-primary">View Tenants</Link>
+                </div>
               </div>
             </div>
           )}

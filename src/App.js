@@ -42,6 +42,11 @@ import './styles/room-management.css';
 import './styles/boarding-house-styles.css';
 import './styles/space-list-switcher.css';
 import './styles/breadcrumb.css';
+import './styles/tenant.css'; // General tenant styles
+import './styles/TenantForm.css'; // Tenant form styles
+import './styles/TenantDetail.css'; // Tenant detail styles
+import './styles/TenantList.css'; // Tenant list styles
+import './styles/SpaceTenantsTab.css'; // Space tenants tab styles
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {

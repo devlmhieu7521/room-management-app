@@ -1,0 +1,137 @@
+/* General tenant styles */
+.tenant-container {
+    margin-bottom: 30px;
+  }
+
+  /* Status badges */
+  .status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .status-badge.active {
+    background-color: #dcfce7;
+    color: #16a34a;
+  }
+
+  .status-badge.inactive {
+    background-color: #f3f4f6;
+    color: #6b7280;
+  }
+
+  .status-badge.pending {
+    background-color: #fef3c7;
+    color: #d97706;
+  }
+
+  /* Tenant avatar */
+  .tenant-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #4a6fdc;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+
+  /* Button styles for tenant pages */
+  .btn-success {
+    background-color: #10b981;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .btn-success:hover {
+    background-color: #059669;
+  }
+
+  .btn-warning {
+    background-color: #f59e0b;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .btn-warning:hover {
+    background-color: #d97706;
+  }
+
+  /* Additional utility classes */
+  .flex {
+    display: flex;
+  }
+
+  .flex-col {
+    flex-direction: column;
+  }
+
+  .items-center {
+    align-items: center;
+  }
+
+  .justify-between {
+    justify-content: space-between;
+  }
+
+  .gap-2 {
+    gap: 0.5rem;
+  }
+
+  .gap-4 {
+    gap: 1rem;
+  }
+
+  .mt-4 {
+    margin-top: 1rem;
+  }
+
+  .mb-4 {
+    margin-bottom: 1rem;
+  }
+
+  /* Status text colors */
+  .status-text.available {
+    color: #10b981;
+    font-weight: 600;
+  }
+
+  .status-text.occupied {
+    color: #f59e0b;
+    font-weight: 600;
+  }
+
+  .status-text.maintenance {
+    color: #ef4444;
+    font-weight: 600;
+  }
+
+  .status-text.active {
+    color: #10b981;
+    font-weight: 600;
+  }
+
+  .status-text.inactive {
+    color: #6b7280;
+    font-weight: 600;
+  }
+
+  .status-text.pending {
+    color: #f59e0b;
+    font-weight: 600;
+  }
