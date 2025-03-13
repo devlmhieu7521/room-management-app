@@ -1,0 +1,39 @@
+/* Breadcrumb styles */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    color: #6b7280;
+    flex-wrap: wrap;
+  }
+
+  .breadcrumb-item {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .breadcrumb a {
+    color: #4a6fdc;
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .breadcrumb a:hover {
+    color: #3d5cba;
+    text-decoration: underline;
+  }
+
+  .breadcrumb-separator {
+    margin: 0 8px;
+    color: #9ca3af;
+  }
+
+  .breadcrumb-active {
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .breadcrumb-text {
+    color: #6b7280;
+  }

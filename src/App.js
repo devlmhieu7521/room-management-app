@@ -3,21 +3,32 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import Dashboard from './pages/Dashboard';
-import SpaceListPage from './pages/spaces/SpaceListPage';
-import CreateSpacePage from './pages/spaces/CreateSpacePage';
-import EditSpacePage from './pages/spaces/EditSpacePage';
-import SpaceDetailPage from './pages/spaces/SpaceDetailPage';
+import SpaceRedirectPage from './pages/spaces/SpaceRedirectPage';
+import ApartmentListPage from './pages/spaces/apartments/ApartmentListPage';
+import CreateApartmentPage from './pages/spaces/apartments/CreateApartmentPage';
+import EditApartmentPage from './pages/spaces/apartments/EditApartmentPage';
+import ApartmentDetailPage from './pages/spaces/apartments/ApartmentDetailPage';
+import BoardingHouseListPage from './pages/spaces/boarding-houses/BoardingHouseListPage';
+import CreateBoardingHousePage from './pages/spaces/boarding-houses/CreateBoardingHousePage';
+import EditBoardingHousePage from './pages/spaces/boarding-houses/EditBoardingHousePage';
+import BoardingHouseDetailPage from './pages/spaces/boarding-houses/BoardingHouseDetailPage';
+import CreateRoomPage from './pages/spaces/boarding-houses/rooms/CreateRoomPage';
+import RoomDetailPage from './pages/spaces/boarding-houses/rooms/RoomDetailPage';
+import EditRoomPage from './pages/spaces/boarding-houses/rooms/EditRoomPage';
 import NotFound from './pages/NotFound';
 import MainLayout from './components/layout/MainLayout';
 import authService from './services/authService';
+
+// Import styles
 import './styles/global.css';
 import './styles/space.css';
 import './styles/modal.css';
 import './styles/page.css';
 import './styles/space-detail.css';
 import './styles/meter-readings.css';
-// Import new room management styles
 import './styles/room-management.css';
+import './styles/boarding-house-styles.css';
+import './styles/space-list-switcher.css';
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -51,10 +62,24 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
 
           {/* Space Management Routes */}
-          <Route path="spaces" element={<SpaceListPage />} />
-          <Route path="spaces/create" element={<CreateSpacePage />} />
-          <Route path="spaces/detail/:id" element={<SpaceDetailPage />} />
-          <Route path="spaces/edit/:id" element={<EditSpacePage />} />
+          <Route path="spaces" element={<SpaceRedirectPage />} />
+
+          {/* Apartment Routes */}
+          <Route path="spaces/apartments" element={<ApartmentListPage />} />
+          <Route path="spaces/apartments/create" element={<CreateApartmentPage />} />
+          <Route path="spaces/apartments/:id" element={<ApartmentDetailPage />} />
+          <Route path="spaces/apartments/edit/:id" element={<EditApartmentPage />} />
+
+          {/* Boarding House Routes */}
+          <Route path="spaces/boarding-houses" element={<BoardingHouseListPage />} />
+          <Route path="spaces/boarding-houses/create" element={<CreateBoardingHousePage />} />
+          <Route path="spaces/boarding-houses/:id" element={<BoardingHouseDetailPage />} />
+          <Route path="spaces/boarding-houses/edit/:id" element={<EditBoardingHousePage />} />
+
+          {/* Boarding House Room Routes */}
+          <Route path="spaces/boarding-houses/:id/rooms/create" element={<CreateRoomPage />} />
+          <Route path="spaces/boarding-houses/:id/rooms/:roomId" element={<RoomDetailPage />} />
+          <Route path="spaces/boarding-houses/:id/rooms/:roomId/edit" element={<EditRoomPage />} />
         </Route>
 
         {/* 404 Route */}

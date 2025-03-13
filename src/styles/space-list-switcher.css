@@ -1,0 +1,71 @@
+/* Space List Switcher Styles */
+.space-list-switcher {
+    margin-bottom: 30px;
+  }
+
+  .switcher-tabs {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+
+  .switcher-tab {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 10px;
+    border: 2px solid #e5e7eb;
+    text-decoration: none;
+    color: #374151;
+    transition: all 0.2s ease;
+  }
+
+  .switcher-tab:hover {
+    border-color: #d1d5db;
+    background-color: #f9fafb;
+  }
+
+  .switcher-tab.active {
+    border-color: #4a6fdc;
+    background-color: rgba(74, 111, 220, 0.05);
+    color: #4a6fdc;
+  }
+
+  .switcher-tab-icon {
+    font-size: 2rem;
+    margin-right: 15px;
+  }
+
+  .switcher-tab-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0 0 5px 0;
+  }
+
+  .switcher-tab-description {
+    font-size: 0.9rem;
+    margin: 0;
+    color: #6b7280;
+  }
+
+  .switcher-tab.active .switcher-tab-description {
+    color: #4a6fdc;
+  }
+
+  .create-buttons {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .switcher-tabs {
+      flex-direction: column;
+    }
+
+    .switcher-tab {
+      width: auto;
+    }
+  }
