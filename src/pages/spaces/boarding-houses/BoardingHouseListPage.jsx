@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import SpaceListSwitcher from '../../components/spaces/SpaceListSwitcher';
-import spaceService from '../../services/spaceService';
-import authService from '../../services/authService';
+import SpaceListSwitcher from '../../../components/spaces/SpaceListSwitcher';
+import spaceService from '../../../services/spaceService';
+import authService from '../../../services/authService';
 
 const BoardingHouseListPage = () => {
   const [boardingHouses, setBoardingHouses] = useState([]);

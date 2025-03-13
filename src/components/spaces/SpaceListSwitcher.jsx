@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import '../../styles/space-list-switcher.css';
 
 /**
  * SpaceListSwitcher Component
@@ -42,7 +43,7 @@ const SpaceListSwitcher = ({ activeType = 'apartments' }) => {
         {activeType === 'apartments' && (
           <button
             className="btn-primary"
-            onClick={() => navigate('/spaces/create', { state: { propertyType: 'apartment' } })}
+            onClick={() => navigate('/spaces/apartments/create')}
           >
             Create New Apartment
           </button>
@@ -51,7 +52,7 @@ const SpaceListSwitcher = ({ activeType = 'apartments' }) => {
         {activeType === 'boarding-houses' && (
           <button
             className="btn-primary"
-            onClick={() => navigate('/spaces/create', { state: { propertyType: 'boarding_house' } })}
+            onClick={() => navigate('/spaces/boarding-houses/create')}
           >
             Create New Boarding House
           </button>

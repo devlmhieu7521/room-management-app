@@ -6,7 +6,10 @@ import './Dashboard.css';
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
-  const [spaces, setSpaces] = useState([]);
+  const [spaces, setSpaces] = useState({
+    apartments: [],
+    boardingHouses: []
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,7 +23,15 @@ const Dashboard = () => {
     const fetchSpaces = async () => {
       try {
         const spacesData = await spaceService.getAllSpaces(currentUser?.id);
-        setSpaces(spacesData);
+
+        // Separate apartments and boarding houses
+        const apartments = spacesData.filter(space => space.propertyType === 'apartment');
+        const boardingHouses = spacesData.filter(space => space.propertyType === 'boarding_house');
+
+        setSpaces({
+          apartments,
+          boardingHouses
+        });
       } catch (error) {
         console.error('Error fetching spaces:', error);
       } finally {
@@ -31,9 +42,58 @@ const Dashboard = () => {
     fetchSpaces();
   }, []);
 
+  // Calculate room stats for a boarding house
+  const getRoomStats = (boardingHouse) => {
+    const rooms = boardingHouse.rooms || [];
+    const available = rooms.filter(room => room.status === 'available').length;
+    const occupied = rooms.filter(room => room.status === 'occupied').length;
+    const maintenance = rooms.filter(room => room.status === 'maintenance').length;
+    return { available, occupied, maintenance };
+  };
+
+  // Calculate total statistics across all properties
+  const getOverallStats = () => {
+    // Count apartments by status
+    const apartmentStats = {
+      total: spaces.apartments.length,
+      available: spaces.apartments.filter(apt => apt.status === 'available').length,
+      occupied: spaces.apartments.filter(apt => apt.status === 'occupied').length,
+      maintenance: spaces.apartments.filter(apt => apt.status === 'maintenance').length
+    };
+
+    // Count boarding house rooms by status
+    const boardingHouseStats = {
+      total: spaces.boardingHouses.length,
+      rooms: {
+        total: 0,
+        available: 0,
+        occupied: 0,
+        maintenance: 0
+      }
+    };
+
+    // Add up all rooms in all boarding houses
+    spaces.boardingHouses.forEach(boardingHouse => {
+      const rooms = boardingHouse.rooms || [];
+      boardingHouseStats.rooms.total += rooms.length;
+      boardingHouseStats.rooms.available += rooms.filter(room => room.status === 'available').length;
+      boardingHouseStats.rooms.occupied += rooms.filter(room => room.status === 'occupied').length;
+      boardingHouseStats.rooms.maintenance += rooms.filter(room => room.status === 'maintenance').length;
+    });
+
+    return {
+      apartmentStats,
+      boardingHouseStats
+    };
+  };
+
   if (loading) {
     return <div>Loading dashboard...</div>;
   }
+
+  const stats = getOverallStats();
+  const totalProperties = stats.apartmentStats.total + stats.boardingHouseStats.total;
+  const totalUnits = stats.apartmentStats.total + stats.boardingHouseStats.rooms.total;
 
   return (
     <div className="container">
@@ -44,10 +104,18 @@ const Dashboard = () => {
 
       <div className="dashboard-stats">
         <div className="stat-card">
+          <div className="stat-icon">🏢</div>
+          <div className="stat-content">
+            <h3>Total Properties</h3>
+            <p className="stat-number">{totalProperties}</p>
+          </div>
+        </div>
+
+        <div className="stat-card">
           <div className="stat-icon">🏠</div>
           <div className="stat-content">
-            <h3>Total Spaces</h3>
-            <p className="stat-number">{spaces.length}</p>
+            <h3>Total Units</h3>
+            <p className="stat-number">{totalUnits}</p>
           </div>
         </div>
 
@@ -56,7 +124,7 @@ const Dashboard = () => {
           <div className="stat-content">
             <h3>Available</h3>
             <p className="stat-number">
-              {spaces.filter(space => space.status === 'available').length}
+              {stats.apartmentStats.available + stats.boardingHouseStats.rooms.available}
             </p>
           </div>
         </div>
@@ -66,17 +134,7 @@ const Dashboard = () => {
           <div className="stat-content">
             <h3>Occupied</h3>
             <p className="stat-number">
-              {spaces.filter(space => space.status === 'occupied').length}
-            </p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">🔧</div>
-          <div className="stat-content">
-            <h3>Maintenance</h3>
-            <p className="stat-number">
-              {spaces.filter(space => space.status === 'maintenance').length}
+              {stats.apartmentStats.occupied + stats.boardingHouseStats.rooms.occupied}
             </p>
           </div>
         </div>
@@ -84,11 +142,12 @@ const Dashboard = () => {
 
       <div className="dashboard-actions">
         <div className="action-card">
-          <h3>Manage Spaces</h3>
+          <h3>Manage Properties</h3>
           <p>Create, edit, and manage your rental spaces.</p>
           <div className="action-links">
-            <Link to="/spaces" className="btn-secondary">View All Spaces</Link>
-            <Link to="/spaces/create" className="btn-primary">Add New Space</Link>
+            <Link to="/spaces/apartments" className="btn-secondary">Apartments</Link>
+            <Link to="/spaces/boarding-houses" className="btn-secondary">Boarding Houses</Link>
+            <Link to="/spaces/apartments/create" className="btn-primary">Add New Property</Link>
           </div>
         </div>
 
@@ -111,46 +170,110 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {spaces.length === 0 ? (
+      {totalProperties === 0 ? (
         <div className="empty-state-card">
-          <h3>No Spaces Yet</h3>
-          <p>Start by creating your first rental space.</p>
-          <Link to="/spaces/create" className="btn-primary">Create Space</Link>
+          <h3>No Properties Yet</h3>
+          <p>Start by creating your first rental property.</p>
+          <div className="action-links">
+            <Link to="/spaces/apartments/create" className="btn-primary">Create Apartment</Link>
+            <Link to="/spaces/boarding-houses/create" className="btn-primary">Create Boarding House</Link>
+          </div>
         </div>
       ) : (
-        <div className="recent-spaces">
-          <div className="section-header">
-            <h2>Recent Spaces</h2>
-            <Link to="/spaces" className="view-all-link">View All</Link>
-          </div>
-
-          <div className="space-cards">
-            {spaces.slice(0, 3).map(space => (
-              <div key={space.id} className="space-summary-card">
-                <div className="space-card-header">
-                  {space.images && space.images.length > 0 ? (
-                    <img src={space.images[0].url} alt={space.name} />
-                  ) : (
-                    <div className="no-image">No Image</div>
-                  )}
-                  <div className={`status-badge ${space.status}`}>
-                    {space.status}
-                  </div>
-                </div>
-                <div className="space-card-body">
-                  <h3>{space.name}</h3>
-                  <p>{space.address.street}, {space.address.district}</p>
-                  <div className="space-details">
-                    <span>{space.squareMeters} m² • Max {space.maxOccupancy} people</span>
-                  </div>
-                </div>
-                <Link to={`/spaces/detail/${space.id}`} className="card-link">
-                Manage
-                </Link>
+        <>
+          {/* Recent Apartments Section */}
+          {spaces.apartments.length > 0 && (
+            <div className="recent-spaces">
+              <div className="section-header">
+                <h2>Recent Apartments</h2>
+                <Link to="/spaces/apartments" className="view-all-link">View All</Link>
               </div>
-            ))}
-          </div>
-        </div>
+
+              <div className="space-cards">
+                {spaces.apartments.slice(0, 3).map(apartment => (
+                  <div key={apartment.id} className="space-summary-card">
+                    <div className="space-card-header">
+                      {apartment.images && apartment.images.length > 0 ? (
+                        <img src={apartment.images[0].url} alt={apartment.name} />
+                      ) : (
+                        <div className="no-image">No Image</div>
+                      )}
+                      <div className={`status-badge ${apartment.status}`}>
+                        {apartment.status}
+                      </div>
+                    </div>
+                    <div className="space-card-body">
+                      <h3>{apartment.name}</h3>
+                      <p>{apartment.address.street}, {apartment.address.district}</p>
+                      <div className="space-details">
+                        <span>{apartment.squareMeters} m² • Max {apartment.maxOccupancy} people</span>
+                      </div>
+                    </div>
+                    <Link to={`/spaces/apartments/${apartment.id}`} className="card-link">
+                      Manage
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Boarding Houses Section */}
+          {spaces.boardingHouses.length > 0 && (
+            <div className="recent-spaces">
+              <div className="section-header">
+                <h2>Recent Boarding Houses</h2>
+                <Link to="/spaces/boarding-houses" className="view-all-link">View All</Link>
+              </div>
+
+              <div className="space-cards">
+                {spaces.boardingHouses.slice(0, 3).map(boardingHouse => {
+                  const roomStats = getRoomStats(boardingHouse);
+                  const totalRooms = (boardingHouse.rooms || []).length;
+
+                  return (
+                    <div key={boardingHouse.id} className="space-summary-card">
+                      <div className="space-card-header">
+                        {boardingHouse.images && boardingHouse.images.length > 0 ? (
+                          <img src={boardingHouse.images[0].url} alt={boardingHouse.name} />
+                        ) : (
+                          <div className="no-image">No Image</div>
+                        )}
+                      </div>
+                      <div className="space-card-body">
+                        <h3>{boardingHouse.name}</h3>
+                        <p>{boardingHouse.address.street}, {boardingHouse.address.district}</p>
+                        <div className="space-details">
+                          <span>{totalRooms} rooms • {roomStats.available} available</span>
+                        </div>
+
+                        {totalRooms > 0 && (
+                          <div className="space-card-occupancy-bar">
+                            <div
+                              className="occupancy-segment available"
+                              style={{width: `${(roomStats.available / totalRooms) * 100}%`}}
+                            ></div>
+                            <div
+                              className="occupancy-segment occupied"
+                              style={{width: `${(roomStats.occupied / totalRooms) * 100}%`}}
+                            ></div>
+                            <div
+                              className="occupancy-segment maintenance"
+                              style={{width: `${(roomStats.maintenance / totalRooms) * 100}%`}}
+                            ></div>
+                          </div>
+                        )}
+                      </div>
+                      <Link to={`/spaces/boarding-houses/${boardingHouse.id}`} className="card-link">
+                        Manage
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
