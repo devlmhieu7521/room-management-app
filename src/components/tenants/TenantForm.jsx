@@ -21,6 +21,7 @@ const TenantForm = ({
   const [spaceType, setSpaceType] = useState('none');
   const [relationshipTypes, setRelationshipTypes] = useState([]);
   const [relatedTenants, setRelatedTenants] = useState([]);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Initialize form data with empty values
   const [formData, setFormData] = useState({
@@ -143,11 +144,36 @@ const TenantForm = ({
             setMainTenants([...mainTenantsData, mainTenant]);
           }
 
+          // If the main tenant has housing, automatically inherit it
+          if (mainTenant.space_id) {
+            setSpaceType(mainTenant.space_type);
+            setFormData(prev => ({
+              ...prev,
+              space_id: mainTenant.space_id,
+              space_type: mainTenant.space_type,
+              space_name: mainTenant.space_name,
+              rent_amount: mainTenant.rent_amount || 0,
+              security_deposit: mainTenant.security_deposit || 0,
+              start_date: mainTenant.start_date || '',
+              end_date: mainTenant.end_date || ''
+            }));
+
+            if (mainTenant.space_type === 'room') {
+              setFormData(prev => ({
+                ...prev,
+                room_id: mainTenant.room_id,
+                boarding_house_id: mainTenant.boarding_house_id,
+                boarding_house_name: mainTenant.boarding_house_name
+              }));
+            }
+          }
+
           // Go to relationships tab first
           setActiveTab('relationships');
         }
       } catch (error) {
         console.error('Error fetching data:', error);
+        setErrors({ submit: 'Failed to load required data. Please try again.' });
       }
     };
 
@@ -156,7 +182,7 @@ const TenantForm = ({
 
   // Handle form input changes
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
 
     // Handle nested objects (emergency_contact and identification)
     if (name.includes('.')) {
@@ -187,12 +213,29 @@ const TenantForm = ({
             tenant_type: value
           }));
         }
-      } else {
+      } else if (type === 'checkbox') {
+        // Handle checkbox inputs
         setFormData(prev => ({
           ...prev,
-          [name]: value
+          [name]: checked
+        }));
+      } else {
+        // Handle regular inputs (text, number, select, etc.)
+        const newValue = type === 'number' && value !== '' ? parseFloat(value) : value;
+        setFormData(prev => ({
+          ...prev,
+          [name]: newValue
         }));
       }
+    }
+
+    // Clear error for this field if it exists
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
     }
   };
 
@@ -207,7 +250,8 @@ const TenantForm = ({
       space_id: '',
       space_type: type === 'none' ? '' : type,
       room_id: '',
-      boarding_house_id: ''
+      boarding_house_id: '',
+      boarding_house_name: ''
     }));
   };
 
@@ -238,8 +282,65 @@ const TenantForm = ({
         room_id: selectedRoom.id,
         boarding_house_id: selectedRoom.boardingHouseId,
         boarding_house_name: selectedRoom.boardingHouseName,
-        rent_amount: selectedRoom.monthlyRent
+        rent_amount: selectedRoom.monthlyRent || 0
       }));
+    }
+  };
+
+  // Handle main tenant selection (for related tenants)
+  const handleMainTenantChange = async (e) => {
+    const mainTenantId = e.target.value;
+
+    if (!mainTenantId) {
+      setFormData(prev => ({
+        ...prev,
+        main_tenant_id: null
+      }));
+      return;
+    }
+
+    try {
+      // Get the selected main tenant
+      const mainTenant = await tenantService.getTenantById(mainTenantId);
+
+      setFormData(prev => ({
+        ...prev,
+        main_tenant_id: mainTenantId
+      }));
+
+      // If the user hasn't set housing yet, automatically inherit from the main tenant
+      if (spaceType === 'none' && mainTenant.space_id) {
+        setSpaceType(mainTenant.space_type);
+        setFormData(prev => ({
+          ...prev,
+          space_id: mainTenant.space_id,
+          space_type: mainTenant.space_type,
+          space_name: mainTenant.space_name,
+          rent_amount: mainTenant.rent_amount || 0,
+          security_deposit: mainTenant.security_deposit || 0,
+          start_date: mainTenant.start_date || '',
+          end_date: mainTenant.end_date || ''
+        }));
+
+        if (mainTenant.space_type === 'room') {
+          setFormData(prev => ({
+            ...prev,
+            room_id: mainTenant.room_id,
+            boarding_house_id: mainTenant.boarding_house_id,
+            boarding_house_name: mainTenant.boarding_house_name
+          }));
+        }
+
+        // Set success message
+        setSuccessMessage('Housing details automatically inherited from main tenant');
+
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setSuccessMessage('');
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error getting main tenant details:', error);
     }
   };
 
@@ -250,8 +351,18 @@ const TenantForm = ({
     // Basic validation
     if (!formData.first_name.trim()) newErrors.first_name = 'First name is required';
     if (!formData.last_name.trim()) newErrors.last_name = 'Last name is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    if (!formData.phone_number.trim()) newErrors.phone_number = 'Phone number is required';
+
+    // Email validation
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    // Phone validation
+    if (!formData.phone_number.trim()) {
+      newErrors.phone_number = 'Phone number is required';
+    }
 
     // If tenant type is normal, validate related fields
     if (formData.tenant_type === 'normal') {
@@ -303,15 +414,28 @@ const TenantForm = ({
     e.preventDefault();
 
     if (!validateForm()) {
+      // Find the first error and switch to its tab
+      if (errors.first_name || errors.last_name || errors.email || errors.phone_number) {
+        setActiveTab('personal');
+      } else if (errors.main_tenant_id || errors.relationship_type) {
+        setActiveTab('relationships');
+      } else if (errors.space_id || errors.room_id || errors.start_date || errors.end_date || errors.rent_amount) {
+        setActiveTab('housing');
+      } else if (errors['identification.number']) {
+        setActiveTab('identification');
+      }
+
       // Scroll to the first error
       const firstError = document.querySelector('.error');
       if (firstError) {
         firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
+
       return;
     }
 
     setIsSubmitting(true);
+    setErrors({});
 
     try {
       let tenantId;
@@ -328,14 +452,15 @@ const TenantForm = ({
       if (inModal && onTenantCreated) {
         onTenantCreated(tenantId);
       } else {
-        // Otherwise redirect to tenants list
-        navigate('/tenants');
+        // Otherwise redirect to tenants list or tenant detail page
+        navigate(editMode ? `/tenants/${tenantId}` : '/tenants');
       }
     } catch (error) {
       console.error('Error saving tenant:', error);
       setErrors({
         submit: 'Failed to save tenant. Please try again.'
       });
+      window.scrollTo(0, 0); // Scroll to top to show the error
     } finally {
       setIsSubmitting(false);
     }
@@ -346,7 +471,7 @@ const TenantForm = ({
     if (inModal && onCancel) {
       onCancel();
     } else {
-      navigate('/tenants');
+      navigate(editMode && initialTenantId ? `/tenants/${initialTenantId}` : '/tenants');
     }
   };
 
@@ -448,6 +573,7 @@ const TenantForm = ({
                     name="tenant_type"
                     value={formData.tenant_type}
                     onChange={handleChange}
+                    disabled={!!mainTenantId} // Disable if coming from "Add Related Tenant"
                   >
                     <option value="main">Main Tenant (Primary)</option>
                     <option value="normal">Normal Tenant (Secondary)</option>
@@ -462,7 +588,7 @@ const TenantForm = ({
                       id="main_tenant_id"
                       name="main_tenant_id"
                       value={formData.main_tenant_id || ''}
-                      onChange={handleChange}
+                      onChange={handleMainTenantChange}
                       disabled={!!mainTenantId} // Disable if coming from "Add Related Tenant"
                     >
                       <option value="">-- Select Main Tenant --</option>
@@ -503,6 +629,9 @@ const TenantForm = ({
             {/* Housing Assignment */}
             <div className="form-section">
               <h4>Housing Assignment</h4>
+              {successMessage && (
+                <div className="success-message">{successMessage}</div>
+              )}
               {/* Housing details are pre-filled from preselectedSpace */}
               <div className="form-row">
                 <div className="form-group half">
@@ -628,10 +757,14 @@ const TenantForm = ({
           <div className="error-message">{errors.submit}</div>
         )}
 
+        {successMessage && (
+          <div className="success-message">{successMessage}</div>
+        )}
+
         {/* Form Tabs */}
         <div className="tenant-form-tabs">
           <div
-            className={`tenant-tab === 'personal' ? 'active' : ''}`}
+            className={`tenant-tab ${activeTab === 'personal' ? 'active' : ''}`}
             onClick={() => setActiveTab('personal')}
           >
             Personal Information
@@ -762,7 +895,7 @@ const TenantForm = ({
                         id="main_tenant_id"
                         name="main_tenant_id"
                         value={formData.main_tenant_id || ''}
-                        onChange={handleChange}
+                        onChange={handleMainTenantChange}
                         disabled={!!mainTenantId} // Disable if coming from "Add Related Tenant"
                       >
                         <option value="">-- Select Main Tenant --</option>
