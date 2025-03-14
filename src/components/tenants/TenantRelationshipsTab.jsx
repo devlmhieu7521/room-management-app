@@ -213,30 +213,35 @@ const TenantRelationshipsTab = ({ tenant }) => {
                   <div className="tenant-housing-inheritance">
                     <h5>Housing Inheritance</h5>
                     <div className="housing-item">
-                      <span className="housing-label">Main Tenant Housing:</span>
-                      <span className="housing-value">{formatHousingInfo(mainTenant)}</span>
+                        <span className="housing-label">Main Tenant Housing:</span>
+                        <span className="housing-value">{formatHousingInfo(mainTenant)}</span>
                     </div>
                     <div className="housing-item">
-                      <span className="housing-label">Your Housing:</span>
-                      <span className="housing-value">{formatHousingInfo(tenant)}</span>
+                        <span className="housing-label">Your Housing:</span>
+                        <span className="housing-value">{formatHousingInfo(tenant)}</span>
                     </div>
 
                     {tenant.space_id && mainTenant.space_id && (
-                      <div className="housing-match-status">
+                        <div className="housing-match-status">
                         {hasSharedHousing(tenant, mainTenant) ? (
-                          <div className="housing-synced">
+                            <div className="housing-synced">
                             <span className="sync-badge success">✓ Housing is synchronized</span>
                             <p>Your housing is automatically inherited from your main tenant.</p>
-                          </div>
+                            <p><strong>Note:</strong> As a secondary tenant, your housing assignment can only be modified
+                            through the main tenant's profile. Any changes made to the main tenant's housing will
+                            automatically apply to your profile as well.</p>
+                            </div>
                         ) : (
-                          <div className="housing-not-synced">
+                            <div className="housing-not-synced">
                             <span className="sync-badge warning">⚠ Housing differs from main tenant</span>
-                            <p>Your housing is not synchronized with your main tenant. This may be due to a manual override or a system error.</p>
-                          </div>
+                            <p>Your housing is not synchronized with your main tenant. This may be due to a system error.</p>
+                            <p><strong>Note:</strong> Secondary tenants should have the same housing assignment as their
+                            main tenant. Please contact a system administrator to resolve this inconsistency.</p>
+                            </div>
                         )}
-                      </div>
+                        </div>
                     )}
-                  </div>
+                    </div>
                 </div>
 
                 <div className="tenant-card-footer">

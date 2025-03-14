@@ -28,26 +28,97 @@ const TenantAssignmentModal = ({ isOpen, onClose, tenantId, onAssignSpace }) => 
     security_deposit: 0
   });
 
-  // Fetch available spaces when modal opens
+  {isOpen && (
+    <div className="modal-backdrop">
+      <div className="modal-content" style={{ maxWidth: '700px', maxHeight: '80vh', overflow: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h3>Assign Housing to Tenant</h3>
+          <button className="close-button" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '1.5rem' }}>
+            ×
+          </button>
+        </div>
+
+        {/* Add this check to prevent assigning space to secondary tenants */}
+        {isFetchingTenant ? (
+          <div className="loading">Checking tenant information...</div>
+        ) : isSecondaryTenant ? (
+          <div className="secondary-tenant-warning">
+            <div className="warning-icon">⚠️</div>
+            <h4>Secondary Tenant Cannot Be Directly Assigned</h4>
+            <p>This tenant is a secondary tenant linked to a main tenant. Secondary tenants automatically
+              inherit their housing assignment from their main tenant.</p>
+            <p>To change this tenant's housing assignment, please:</p>
+            <ol>
+              <li>Close this dialog</li>
+              <li>Navigate to the main tenant's profile ({mainTenantName})</li>
+              <li>Update the housing assignment for the main tenant</li>
+            </ol>
+            <p>The housing change will be automatically applied to all related tenants.</p>
+            <div className="modal-actions" style={{marginTop: '20px'}}>
+              <button className="btn-primary" onClick={onClose}>
+                Close
+              </button>
+              {mainTenantId && (
+                <Link
+                  to={`/tenants/${mainTenantId}`}
+                  className="btn-secondary"
+                  onClick={onClose}
+                >
+                  Go to Main Tenant
+                </Link>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Original modal content for main tenants */}
+            {loading ? (
+              <div className="loading">Loading available spaces...</div>
+            ) : error ? (
+              <div className="error-message">{error}</div>
+            ) : (
+              <>
+                {/* Original modal content continues here... */}
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )}
+
+  // Add useEffect to check if tenant is secondary at modal opening
   useEffect(() => {
-    const fetchAvailableSpaces = async () => {
-      try {
-        setLoading(true);
-        const spaces = await tenantService.getAvailableSpaces();
-        setAvailableSpaces(spaces);
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching available spaces:", err);
-        setError("Failed to load available spaces");
-      } finally {
-        setLoading(false);
+    const checkTenantType = async () => {
+      if (isOpen && tenantId) {
+        setIsFetchingTenant(true);
+        try {
+          const tenant = await tenantService.getTenantById(tenantId);
+          if (tenant.tenant_type === 'normal' && tenant.main_tenant_id) {
+            setIsSecondaryTenant(true);
+            // Get main tenant info
+            try {
+              const mainTenant = await tenantService.getTenantById(tenant.main_tenant_id);
+              setMainTenantId(mainTenant.id);
+              setMainTenantName(`${mainTenant.first_name} ${mainTenant.last_name}`);
+            } catch (err) {
+              console.error("Error fetching main tenant:", err);
+              setMainTenantName("the main tenant");
+            }
+          } else {
+            setIsSecondaryTenant(false);
+          }
+        } catch (err) {
+          console.error("Error checking tenant type:", err);
+          setError("Failed to verify tenant information. Please try again.");
+        } finally {
+          setIsFetchingTenant(false);
+        }
       }
     };
 
-    if (isOpen) {
-      fetchAvailableSpaces();
-    }
-  }, [isOpen]);
+    checkTenantType();
+  }, [isOpen, tenantId]);
 
   // Handle form input changes
   const handleChange = (e) => {

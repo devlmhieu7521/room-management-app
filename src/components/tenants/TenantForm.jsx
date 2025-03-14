@@ -976,121 +976,178 @@ const TenantForm = ({
           {/* Housing Assignment Tab */}
           {activeTab === 'housing' && (
             <div className="form-section">
-              <div className="form-group full">
-                <label htmlFor="space_type">Housing Assignment Type</label>
-                <select
-                  id="space_type"
-                  name="space_type_selector"
-                  value={spaceType}
-                  onChange={handleSpaceTypeChange}
-                >
-                  <option value="none">No Housing Assignment</option>
-                  <option value="apartment">Apartment</option>
-                  <option value="room">Room in Boarding House</option>
-                </select>
-                <small>Select the type of housing to assign to this tenant</small>
-              </div>
+              {formData.tenant_type === 'normal' ? (
+                // For secondary tenants, show inherited housing information
+                <div className="inherited-housing-info">
+                  <div className="info-banner">
+                    <h4>Housing Inherited from Main Tenant</h4>
+                    <p>Secondary tenants automatically inherit housing assignments from their main tenant.
+                      Housing can only be modified through the main tenant's profile.</p>
+                  </div>
 
-              {spaceType === 'apartment' && (
-                <div className="form-group full">
-                  <label htmlFor="space_id">Select Apartment*</label>
-                  <select
-                    id="space_id"
-                    name="space_id"
-                    value={formData.space_id}
-                    onChange={handleApartmentChange}
-                  >
-                    <option value="">-- Select an apartment --</option>
-                    {availableSpaces.apartments.map(apt => (
-                      <option key={apt.id} value={apt.id}>
-                        {apt.name} ({apt.address}) - {apt.size}m² - {apt.monthlyRent.toLocaleString()} VND/month
-                      </option>
-                    ))}
-                  </select>
-                  {errors.space_id && <div className="error">{errors.space_id}</div>}
-                  {availableSpaces.apartments.length === 0 && (
-                    <small className="warning">No available apartments found. <a href="/spaces/apartments/create">Create a new apartment</a></small>
+                  {formData.space_id ? (
+                    <div className="current-housing-details">
+                      <h5>Current Housing Assignment</h5>
+                      <div className="detail-grid">
+                        <div className="detail-item">
+                          <span className="detail-label">Housing Type:</span>
+                          <span className="detail-value">
+                            {formData.space_type === 'apartment' ? 'Apartment' : 'Room in Boarding House'}
+                          </span>
+                        </div>
+                        <div className="detail-item">
+                          <span className="detail-label">Location:</span>
+                          <span className="detail-value">
+                            {formData.space_type === 'apartment'
+                              ? formData.space_name
+                              : `${formData.boarding_house_name}, Room ${formData.room_id}`}
+                          </span>
+                        </div>
+                        <div className="detail-item">
+                          <span className="detail-label">Lease Period:</span>
+                          <span className="detail-value">
+                            {formData.start_date ? new Date(formData.start_date).toLocaleDateString() : 'N/A'} -
+                            {formData.end_date ? new Date(formData.end_date).toLocaleDateString() : 'N/A'}
+                          </span>
+                        </div>
+                        <div className="detail-item">
+                          <span className="detail-label">Monthly Rent:</span>
+                          <span className="detail-value">
+                            {formData.rent_amount?.toLocaleString() || 0} VND
+                          </span>
+                        </div>
+                      </div>
+                      <div className="housing-note">
+                        <p>To make changes to this housing assignment, please edit the main tenant's profile.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="no-housing-assigned">
+                      <p>The main tenant does not have any housing assigned. Once the main tenant is assigned
+                        to a space, this tenant will automatically inherit that assignment.</p>
+                    </div>
                   )}
                 </div>
-              )}
-
-              {spaceType === 'room' && (
-                <div className="form-group full">
-                  <label htmlFor="room_id">Select Room*</label>
-                  <select
-                    id="room_id"
-                    name="room_id"
-                    value={formData.room_id}
-                    onChange={handleRoomChange}
-                  >
-                    <option value="">-- Select a room --</option>
-                    {availableSpaces.rooms.map(room => (
-                      <option key={`${room.boardingHouseId}-${room.id}`} value={room.id}>
-                        {room.boardingHouseName} - Room {room.id} ({room.size}m²) - {room.monthlyRent.toLocaleString()} VND/month
-                      </option>
-                    ))}
-                  </select>
-                  {errors.room_id && <div className="error">{errors.room_id}</div>}
-                  {availableSpaces.rooms.length === 0 && (
-                    <small className="warning">No available rooms found. <a href="/spaces/boarding-houses">Create or manage boarding houses</a></small>
-                  )}
-                </div>
-              )}
-
-              {spaceType !== 'none' && (
+              ) : (
+                // For main tenants, show the regular housing assignment form
                 <>
-                  <div className="form-row">
-                    <div className="form-group half">
-                      <label htmlFor="start_date">Lease Start Date*</label>
-                      <input
-                        type="date"
-                        id="start_date"
-                        name="start_date"
-                        value={formData.start_date}
-                        onChange={handleChange}
-                      />
-                      {errors.start_date && <div className="error">{errors.start_date}</div>}
-                    </div>
-
-                    <div className="form-group half">
-                      <label htmlFor="end_date">Lease End Date*</label>
-                      <input
-                        type="date"
-                        id="end_date"
-                        name="end_date"
-                        value={formData.end_date}
-                        onChange={handleChange}
-                      />
-                      {errors.end_date && <div className="error">{errors.end_date}</div>}
-                    </div>
+                  <div className="form-group full">
+                    <label htmlFor="space_type">Housing Assignment Type</label>
+                    <select
+                      id="space_type"
+                      name="space_type_selector"
+                      value={spaceType}
+                      onChange={handleSpaceTypeChange}
+                    >
+                      <option value="none">No Housing Assignment</option>
+                      <option value="apartment">Apartment</option>
+                      <option value="room">Room in Boarding House</option>
+                    </select>
+                    <small>Select the type of housing to assign to this tenant</small>
                   </div>
 
-                  <div className="form-row">
-                    <div className="form-group half">
-                      <label htmlFor="rent_amount">Monthly Rent (VND)*</label>
-                      <input
-                        type="number"
-                        id="rent_amount"
-                        name="rent_amount"
-                        value={formData.rent_amount}
-                        onChange={handleChange}
-                        min="0"
-                      />
-                      {errors.rent_amount && <div className="error">{errors.rent_amount}</div>}
+                  {spaceType === 'apartment' && (
+                    <div className="form-group full">
+                      <label htmlFor="space_id">Select Apartment*</label>
+                      <select
+                        id="space_id"
+                        name="space_id"
+                        value={formData.space_id}
+                        onChange={handleApartmentChange}
+                      >
+                        <option value="">-- Select an apartment --</option>
+                        {availableSpaces.apartments.map(apt => (
+                          <option key={apt.id} value={apt.id}>
+                            {apt.name} ({apt.address}) - {apt.size}m² - {apt.monthlyRent.toLocaleString()} VND/month
+                          </option>
+                        ))}
+                      </select>
+                      {errors.space_id && <div className="error">{errors.space_id}</div>}
+                      {availableSpaces.apartments.length === 0 && (
+                        <small className="warning">No available apartments found. <a href="/spaces/apartments/create">Create a new apartment</a></small>
+                      )}
                     </div>
+                  )}
 
-                    <div className="form-group half">
-                      <label htmlFor="security_deposit">Security Deposit (VND)</label>
-                      <input
-                        type="number"
-                        id="security_deposit"
-                        name="security_deposit"
-                        value={formData.security_deposit}
-                        onChange={handleChange}
-                        min="0"
-                      />
+                  {spaceType === 'room' && (
+                    <div className="form-group full">
+                      <label htmlFor="room_id">Select Room*</label>
+                      <select
+                        id="room_id"
+                        name="room_id"
+                        value={formData.room_id}
+                        onChange={handleRoomChange}
+                      >
+                        <option value="">-- Select a room --</option>
+                        {availableSpaces.rooms.map(room => (
+                          <option key={`${room.boardingHouseId}-${room.id}`} value={room.id}>
+                            {room.boardingHouseName} - Room {room.id} ({room.size}m²) - {room.monthlyRent.toLocaleString()} VND/month
+                          </option>
+                        ))}
+                      </select>
+                      {errors.room_id && <div className="error">{errors.room_id}</div>}
+                      {availableSpaces.rooms.length === 0 && (
+                        <small className="warning">No available rooms found. <a href="/spaces/boarding-houses">Create or manage boarding houses</a></small>
+                      )}
                     </div>
-                  </div>
+                  )}
+
+                  {spaceType !== 'none' && (
+                    <>
+                      <div className="form-row">
+                        <div className="form-group half">
+                          <label htmlFor="start_date">Lease Start Date*</label>
+                          <input
+                            type="date"
+                            id="start_date"
+                            name="start_date"
+                            value={formData.start_date}
+                            onChange={handleChange}
+                          />
+                          {errors.start_date && <div className="error">{errors.start_date}</div>}
+                        </div>
+
+                        <div className="form-group half">
+                          <label htmlFor="end_date">Lease End Date*</label>
+                          <input
+                            type="date"
+                            id="end_date"
+                            name="end_date"
+                            value={formData.end_date}
+                            onChange={handleChange}
+                          />
+                          {errors.end_date && <div className="error">{errors.end_date}</div>}
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group half">
+                          <label htmlFor="rent_amount">Monthly Rent (VND)*</label>
+                          <input
+                            type="number"
+                            id="rent_amount"
+                            name="rent_amount"
+                            value={formData.rent_amount}
+                            onChange={handleChange}
+                            min="0"
+                          />
+                          {errors.rent_amount && <div className="error">{errors.rent_amount}</div>}
+                        </div>
+
+                        <div className="form-group half">
+                          <label htmlFor="security_deposit">Security Deposit (VND)</label>
+                          <input
+                            type="number"
+                            id="security_deposit"
+                            name="security_deposit"
+                            value={formData.security_deposit}
+                            onChange={handleChange}
+                            min="0"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </div>

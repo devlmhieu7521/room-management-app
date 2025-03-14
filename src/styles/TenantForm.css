@@ -358,3 +358,83 @@
     padding-bottom: 10px;
     border-bottom: 1px solid #e5e7eb;
   }
+  /* Add these styles to your TenantForm.css file */
+
+/* Inherited housing styles */
+.inherited-housing-info {
+    background-color: #f8fafc;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .info-banner {
+    background-color: #dbeafe;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-left: 4px solid #3b82f6;
+  }
+
+  .info-banner h4 {
+    color: #1e40af;
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+  }
+
+  .info-banner p {
+    color: #1e3a8a;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  .current-housing-details {
+    background-color: white;
+    border-radius: 6px;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .current-housing-details h5 {
+    font-size: 1rem;
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #334155;
+  }
+
+  .housing-note {
+    margin-top: 15px;
+    font-style: italic;
+    color: #64748b;
+    font-size: 0.9rem;
+  }
+
+  .no-housing-assigned {
+    background-color: #fff7ed;
+    border-radius: 6px;
+    padding: 15px;
+    border-left: 4px solid #fb923c;
+    color: #9a3412;
+    font-size: 0.9rem;
+  }
+
+  /* Modal specific styling */
+  .modal-content .inherited-housing-info {
+    padding: 15px;
+  }
+
+  .modal-content .info-banner {
+    padding: 10px;
+    margin-bottom: 15px;
+  }
+
+  .modal-content .current-housing-details {
+    padding: 10px;
+  }
+
+  .modal-content .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
