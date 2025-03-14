@@ -1,5 +1,5 @@
 // Enhanced Tenant Service
-// Handles all tenant-related API operations with support for tenant relationships
+// Handles all tenant-related API operations with support for tenant relationships and housing inheritance
 
 import defaultTenant from '../models/tenantModel';
 import spaceService from './spaceService';
@@ -10,7 +10,7 @@ const TENANTS_STORAGE_KEY = 'rental_tenants';
 const tenantService = {
   // Create a new tenant
   createTenant: async (tenantData) => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       try {
         // Get current tenants from storage
         const tenantsJson = localStorage.getItem(TENANTS_STORAGE_KEY);
@@ -31,8 +31,9 @@ const tenantService = {
           const mainTenantIndex = tenants.findIndex(t => t.id === newTenant.main_tenant_id);
 
           if (mainTenantIndex !== -1) {
-            // Add this tenant to the main tenant's related_tenants array
             const mainTenant = tenants[mainTenantIndex];
+
+            // Add this tenant to the main tenant's related_tenants array
             const updatedMainTenant = {
               ...mainTenant,
               related_tenants: [...(mainTenant.related_tenants || []), newTenant.id],
@@ -40,6 +41,24 @@ const tenantService = {
             };
 
             tenants[mainTenantIndex] = updatedMainTenant;
+
+            // NEW: Inherit housing information from main tenant
+            if (mainTenant.space_id) {
+              newTenant.space_id = mainTenant.space_id;
+              newTenant.space_type = mainTenant.space_type;
+              newTenant.space_name = mainTenant.space_name;
+              newTenant.rent_amount = mainTenant.rent_amount;
+              newTenant.security_deposit = mainTenant.security_deposit;
+              newTenant.start_date = mainTenant.start_date;
+              newTenant.end_date = mainTenant.end_date;
+
+              // For room assignments, inherit room and boarding house details
+              if (mainTenant.space_type === 'room') {
+                newTenant.room_id = mainTenant.room_id;
+                newTenant.boarding_house_id = mainTenant.boarding_house_id;
+                newTenant.boarding_house_name = mainTenant.boarding_house_name;
+              }
+            }
           }
         }
 
@@ -49,7 +68,7 @@ const tenantService = {
 
         // If the tenant is assigned to a space, update the space status
         if (newTenant.space_id) {
-          tenantService.assignTenantToSpace(newTenant);
+          await tenantService.assignTenantToSpace(newTenant);
         }
 
         // Simulate delay for API call
@@ -146,6 +165,7 @@ const tenantService = {
           const oldTenant = tenants[index];
           const oldMainTenantId = oldTenant.main_tenant_id;
           const oldTenantType = oldTenant.tenant_type;
+          const oldSpaceId = oldTenant.space_id;
 
           // Update tenant data
           const updatedTenant = {
@@ -185,6 +205,37 @@ const tenantService = {
                 related_tenants: updatedRelatedTenants,
                 updated_at: new Date().toISOString()
               };
+
+              // NEW: Inherit housing information from the new main tenant
+              if (newMainTenant.space_id) {
+                updatedTenant.space_id = newMainTenant.space_id;
+                updatedTenant.space_type = newMainTenant.space_type;
+                updatedTenant.space_name = newMainTenant.space_name;
+                updatedTenant.rent_amount = newMainTenant.rent_amount;
+                updatedTenant.security_deposit = newMainTenant.security_deposit;
+                updatedTenant.start_date = newMainTenant.start_date;
+                updatedTenant.end_date = newMainTenant.end_date;
+
+                // For room assignments, inherit room and boarding house details
+                if (newMainTenant.space_type === 'room') {
+                  updatedTenant.room_id = newMainTenant.room_id;
+                  updatedTenant.boarding_house_id = newMainTenant.boarding_house_id;
+                  updatedTenant.boarding_house_name = newMainTenant.boarding_house_name;
+                } else {
+                  // Clear room info if main tenant is in an apartment
+                  updatedTenant.room_id = null;
+                  updatedTenant.boarding_house_id = null;
+                  updatedTenant.boarding_house_name = null;
+                }
+              } else {
+                // Clear housing info if main tenant has no housing
+                updatedTenant.space_id = null;
+                updatedTenant.space_type = '';
+                updatedTenant.space_name = '';
+                updatedTenant.room_id = null;
+                updatedTenant.boarding_house_id = null;
+                updatedTenant.boarding_house_name = null;
+              }
             }
           }
 
@@ -255,6 +306,74 @@ const tenantService = {
                 related_tenants: updatedRelatedTenants,
                 updated_at: new Date().toISOString()
               };
+
+              // Inherit housing information from the new main tenant
+              if (newMainTenant.space_id) {
+                updatedTenant.space_id = newMainTenant.space_id;
+                updatedTenant.space_type = newMainTenant.space_type;
+                updatedTenant.space_name = newMainTenant.space_name;
+                updatedTenant.rent_amount = newMainTenant.rent_amount;
+                updatedTenant.security_deposit = newMainTenant.security_deposit;
+                updatedTenant.start_date = newMainTenant.start_date;
+                updatedTenant.end_date = newMainTenant.end_date;
+
+                if (newMainTenant.space_type === 'room') {
+                  updatedTenant.room_id = newMainTenant.room_id;
+                  updatedTenant.boarding_house_id = newMainTenant.boarding_house_id;
+                  updatedTenant.boarding_house_name = newMainTenant.boarding_house_name;
+                }
+              }
+            }
+          }
+
+          // NEW: Handle main tenant with housing changes
+          // If this is a main tenant with related tenants and housing has changed,
+          // update all related tenants to have the same housing details
+          if (updatedTenant.tenant_type === 'main' &&
+              updatedTenant.related_tenants &&
+              updatedTenant.related_tenants.length > 0 &&
+              (updatedTenant.space_id !== oldSpaceId ||
+               updatedData.space_id ||
+               updatedData.start_date ||
+               updatedData.end_date ||
+               updatedData.rent_amount)) {
+
+            // Update all related tenants with the same housing information
+            for (const relatedTenantId of updatedTenant.related_tenants) {
+              const relatedTenantIndex = tenants.findIndex(t => t.id === relatedTenantId);
+
+              if (relatedTenantIndex !== -1) {
+                // Get current related tenant
+                const relatedTenant = tenants[relatedTenantIndex];
+
+                // Update housing information to match main tenant
+                const updatedRelatedTenant = {
+                  ...relatedTenant,
+                  space_id: updatedTenant.space_id,
+                  space_type: updatedTenant.space_type,
+                  space_name: updatedTenant.space_name,
+                  rent_amount: updatedTenant.rent_amount,
+                  security_deposit: updatedTenant.security_deposit,
+                  start_date: updatedTenant.start_date,
+                  end_date: updatedTenant.end_date,
+                  updated_at: new Date().toISOString()
+                };
+
+                // For room assignments, update room and boarding house details
+                if (updatedTenant.space_type === 'room') {
+                  updatedRelatedTenant.room_id = updatedTenant.room_id;
+                  updatedRelatedTenant.boarding_house_id = updatedTenant.boarding_house_id;
+                  updatedRelatedTenant.boarding_house_name = updatedTenant.boarding_house_name;
+                } else {
+                  // Clear room info if main tenant is in an apartment
+                  updatedRelatedTenant.room_id = null;
+                  updatedRelatedTenant.boarding_house_id = null;
+                  updatedRelatedTenant.boarding_house_name = null;
+                }
+
+                // Update the related tenant in the array
+                tenants[relatedTenantIndex] = updatedRelatedTenant;
+              }
             }
           }
 

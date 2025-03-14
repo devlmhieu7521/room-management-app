@@ -199,3 +199,96 @@
       font-size: 0.9rem;
     }
   }
+/* Added styles for housing inheritance in relationship tab */
+
+/* Housing information section */
+.tenant-housing-info {
+    margin-top: 15px;
+    background-color: #f8fafc;
+    padding: 10px;
+    border-radius: 6px;
+  }
+
+  .housing-item {
+    margin-bottom: 5px;
+  }
+
+  .housing-label {
+    font-weight: 500;
+    color: #475569;
+    margin-right: 8px;
+  }
+
+  .housing-value {
+    color: #0f172a;
+  }
+
+  .housing-match-badge {
+    margin-top: 5px;
+  }
+
+  .same-housing {
+    color: #16a34a;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+  }
+
+  .different-housing {
+    color: #ea580c;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Housing inheritance section for secondary tenants */
+  .tenant-housing-inheritance {
+    margin-top: 20px;
+    background-color: #f0f9ff;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #bae6fd;
+  }
+
+  .tenant-housing-inheritance h5 {
+    color: #0369a1;
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 1rem;
+  }
+
+  .housing-match-status {
+    margin-top: 15px;
+  }
+
+  .sync-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+
+  .sync-badge.success {
+    background-color: #dcfce7;
+    color: #166534;
+  }
+
+  .sync-badge.warning {
+    background-color: #ffedd5;
+    color: #c2410c;
+  }
+
+  .housing-synced p,
+  .housing-not-synced p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  .housing-synced p {
+    color: #166534;
+  }
+
+  .housing-not-synced p {
+    color: #9a3412;
+  }

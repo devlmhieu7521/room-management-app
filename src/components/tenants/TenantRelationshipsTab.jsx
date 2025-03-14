@@ -62,6 +62,33 @@ const TenantRelationshipsTab = ({ tenant }) => {
     return relationship ? relationship.label : 'Unknown relationship';
   };
 
+  // Check if housing details are shared
+  const hasSharedHousing = (tenant1, tenant2) => {
+    if (!tenant1.space_id || !tenant2.space_id) return false;
+
+    if (tenant1.space_type === 'apartment' && tenant2.space_type === 'apartment') {
+      return tenant1.space_id === tenant2.space_id;
+    } else if (tenant1.space_type === 'room' && tenant2.space_type === 'room') {
+      return tenant1.room_id === tenant2.room_id &&
+             tenant1.boarding_house_id === tenant2.boarding_house_id;
+    }
+
+    return false;
+  };
+
+  // Format housing information
+  const formatHousingInfo = (tenant) => {
+    if (!tenant.space_id) return 'No housing assigned';
+
+    if (tenant.space_type === 'apartment') {
+      return tenant.space_name;
+    } else if (tenant.space_type === 'room') {
+      return `${tenant.boarding_house_name}, Room ${tenant.room_id}`;
+    }
+
+    return 'Unknown housing type';
+  };
+
   if (loading) {
     return <div className="loading">Loading relationship data...</div>;
   }
@@ -117,15 +144,20 @@ const TenantRelationshipsTab = ({ tenant }) => {
                         </div>
                       </div>
 
-                      {relatedTenant.space_id === tenant.space_id ? (
-                        <div className="shared-space-info">
-                          <span className="shared-space-badge">Shares same living space</span>
+                      {/* Display housing information - showing what's inherited */}
+                      <div className="tenant-housing-info">
+                        <div className="housing-item">
+                          <span className="housing-label">Housing:</span>
+                          <span className="housing-value">{formatHousingInfo(relatedTenant)}</span>
                         </div>
-                      ) : (
-                        <div className="different-space-info">
-                          <span className="different-space-badge">Has separate living space</span>
-                        </div>
-                      )}
+                        {tenant.space_id && relatedTenant.space_id && (
+                          <div className="housing-match-badge">
+                            {hasSharedHousing(tenant, relatedTenant) ?
+                              <span className="same-housing">✓ Inherited housing</span> :
+                              <span className="different-housing">⚠ Housing differs from main tenant</span>}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="tenant-card-footer">
@@ -177,15 +209,34 @@ const TenantRelationshipsTab = ({ tenant }) => {
                     </div>
                   </div>
 
-                  {mainTenant.space_id === tenant.space_id ? (
-                    <div className="shared-space-info">
-                      <span className="shared-space-badge">Shares same living space</span>
+                  {/* Display housing inheritance information */}
+                  <div className="tenant-housing-inheritance">
+                    <h5>Housing Inheritance</h5>
+                    <div className="housing-item">
+                      <span className="housing-label">Main Tenant Housing:</span>
+                      <span className="housing-value">{formatHousingInfo(mainTenant)}</span>
                     </div>
-                  ) : (
-                    <div className="different-space-info">
-                      <span className="different-space-badge">Has separate living space</span>
+                    <div className="housing-item">
+                      <span className="housing-label">Your Housing:</span>
+                      <span className="housing-value">{formatHousingInfo(tenant)}</span>
                     </div>
-                  )}
+
+                    {tenant.space_id && mainTenant.space_id && (
+                      <div className="housing-match-status">
+                        {hasSharedHousing(tenant, mainTenant) ? (
+                          <div className="housing-synced">
+                            <span className="sync-badge success">✓ Housing is synchronized</span>
+                            <p>Your housing is automatically inherited from your main tenant.</p>
+                          </div>
+                        ) : (
+                          <div className="housing-not-synced">
+                            <span className="sync-badge warning">⚠ Housing differs from main tenant</span>
+                            <p>Your housing is not synchronized with your main tenant. This may be due to a manual override or a system error.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="tenant-card-footer">
