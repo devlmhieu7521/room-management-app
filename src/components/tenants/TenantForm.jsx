@@ -9,7 +9,8 @@ const TenantForm = ({
   preselectedSpace = null,
   inModal = false,
   onTenantCreated = null,
-  onCancel = null
+  onCancel = null,
+  mainTenantId = null
 }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('personal');
@@ -127,13 +128,31 @@ const TenantForm = ({
             }
           }
         }
+        // If a main tenant ID is provided (adding a related tenant)
+        else if (mainTenantId) {
+          const mainTenant = await tenantService.getTenantById(mainTenantId);
+          setFormData(prev => ({
+            ...prev,
+            tenant_type: 'normal',
+            main_tenant_id: mainTenantId,
+            relationship_type: prev.relationship_type || 'roommate' // Default to roommate
+          }));
+
+          // Add the main tenant to our list in case they aren't loaded yet
+          if (mainTenant && !mainTenantsData.some(t => t.id === mainTenantId)) {
+            setMainTenants([...mainTenantsData, mainTenant]);
+          }
+
+          // Go to relationships tab first
+          setActiveTab('relationships');
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
       }
     };
 
     fetchData();
-  }, [editMode, initialTenantId, preselectedSpace]);
+  }, [editMode, initialTenantId, preselectedSpace, mainTenantId]);
 
   // Handle form input changes
   const handleChange = (e) => {
@@ -151,10 +170,29 @@ const TenantForm = ({
         }
       }));
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
+      // Special handling for tenant_type changes
+      if (name === 'tenant_type') {
+        // If changing to 'main', clear main_tenant_id and relationship_type
+        if (value === 'main') {
+          setFormData(prev => ({
+            ...prev,
+            tenant_type: value,
+            main_tenant_id: null,
+            relationship_type: null
+          }));
+        } else {
+          // Just update the tenant_type otherwise
+          setFormData(prev => ({
+            ...prev,
+            tenant_type: value
+          }));
+        }
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value
+        }));
+      }
     }
   };
 
@@ -214,6 +252,16 @@ const TenantForm = ({
     if (!formData.last_name.trim()) newErrors.last_name = 'Last name is required';
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     if (!formData.phone_number.trim()) newErrors.phone_number = 'Phone number is required';
+
+    // If tenant type is normal, validate related fields
+    if (formData.tenant_type === 'normal') {
+      if (!formData.main_tenant_id) {
+        newErrors.main_tenant_id = 'Please select a main tenant';
+      }
+      if (!formData.relationship_type) {
+        newErrors.relationship_type = 'Please select a relationship type';
+      }
+    }
 
     // If a space is selected, validate related fields
     if (spaceType !== 'none') {
@@ -316,6 +364,12 @@ const TenantForm = ({
     }
   }, [spaceType, formData.start_date]);
 
+  // Get main tenant name by ID
+  const getMainTenantName = (id) => {
+    const tenant = mainTenants.find(t => t.id === id);
+    return tenant ? `${tenant.first_name} ${tenant.last_name}` : 'Unknown';
+  };
+
   // Simplified form for modal view
   if (inModal) {
     return (
@@ -384,6 +438,66 @@ const TenantForm = ({
                   {errors.phone_number && <div className="error">{errors.phone_number}</div>}
                 </div>
               </div>
+
+              {/* Tenant Type Selection - Even in modal we show this */}
+              <div className="form-row">
+                <div className="form-group half">
+                  <label htmlFor="tenant_type">Tenant Type*</label>
+                  <select
+                    id="tenant_type"
+                    name="tenant_type"
+                    value={formData.tenant_type}
+                    onChange={handleChange}
+                  >
+                    <option value="main">Main Tenant (Primary)</option>
+                    <option value="normal">Normal Tenant (Secondary)</option>
+                  </select>
+                  <small>Main: Primary tenant responsible for the lease. Normal: Secondary tenant related to a main tenant.</small>
+                </div>
+
+                {formData.tenant_type === 'normal' && (
+                  <div className="form-group half">
+                    <label htmlFor="main_tenant_id">Main Tenant*</label>
+                    <select
+                      id="main_tenant_id"
+                      name="main_tenant_id"
+                      value={formData.main_tenant_id || ''}
+                      onChange={handleChange}
+                      disabled={!!mainTenantId} // Disable if coming from "Add Related Tenant"
+                    >
+                      <option value="">-- Select Main Tenant --</option>
+                      {mainTenants.map(tenant => (
+                        <option key={tenant.id} value={tenant.id}>
+                          {tenant.first_name} {tenant.last_name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.main_tenant_id && <div className="error">{errors.main_tenant_id}</div>}
+                  </div>
+                )}
+              </div>
+
+              {formData.tenant_type === 'normal' && (
+                <div className="form-row">
+                  <div className="form-group full">
+                    <label htmlFor="relationship_type">Relationship to Main Tenant*</label>
+                    <select
+                      id="relationship_type"
+                      name="relationship_type"
+                      value={formData.relationship_type || ''}
+                      onChange={handleChange}
+                    >
+                      <option value="">-- Select Relationship --</option>
+                      {relationshipTypes.map(type => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.relationship_type && <div className="error">{errors.relationship_type}</div>}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Housing Assignment */}
@@ -517,10 +631,16 @@ const TenantForm = ({
         {/* Form Tabs */}
         <div className="tenant-form-tabs">
           <div
-            className={`tenant-tab ${activeTab === 'personal' ? 'active' : ''}`}
+            className={`tenant-tab === 'personal' ? 'active' : ''}`}
             onClick={() => setActiveTab('personal')}
           >
             Personal Information
+          </div>
+          <div
+            className={`tenant-tab ${activeTab === 'relationships' ? 'active' : ''}`}
+            onClick={() => setActiveTab('relationships')}
+          >
+            Tenant Type & Relationships
           </div>
           <div
             className={`tenant-tab ${activeTab === 'housing' ? 'active' : ''}`}
@@ -607,6 +727,116 @@ const TenantForm = ({
                   {errors.phone_number && <div className="error">{errors.phone_number}</div>}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Tenant Type & Relationships Tab */}
+          {activeTab === 'relationships' && (
+            <div className="form-section">
+              <div className="form-row">
+                <div className="form-group full">
+                  <label htmlFor="tenant_type">Tenant Type*</label>
+                  <select
+                    id="tenant_type"
+                    name="tenant_type"
+                    value={formData.tenant_type}
+                    onChange={handleChange}
+                    disabled={!!mainTenantId} // Disable if coming from "Add Related Tenant"
+                  >
+                    <option value="main">Main Tenant (Primary)</option>
+                    <option value="normal">Normal Tenant (Secondary)</option>
+                  </select>
+                  <small>
+                    Main tenants are primary responsible persons for the lease agreement.
+                    Normal tenants are secondary tenants associated with a main tenant (e.g., spouse, roommate, dependent).
+                  </small>
+                </div>
+              </div>
+
+              {formData.tenant_type === 'normal' && (
+                <>
+                  <div className="form-row">
+                    <div className="form-group full">
+                      <label htmlFor="main_tenant_id">Main Tenant*</label>
+                      <select
+                        id="main_tenant_id"
+                        name="main_tenant_id"
+                        value={formData.main_tenant_id || ''}
+                        onChange={handleChange}
+                        disabled={!!mainTenantId} // Disable if coming from "Add Related Tenant"
+                      >
+                        <option value="">-- Select Main Tenant --</option>
+                        {mainTenants.map(tenant => (
+                          <option key={tenant.id} value={tenant.id}>
+                            {tenant.first_name} {tenant.last_name}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.main_tenant_id && <div className="error">{errors.main_tenant_id}</div>}
+                      {formData.main_tenant_id && (
+                        <small>
+                          This tenant will be associated with {getMainTenantName(formData.main_tenant_id)}
+                        </small>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group full">
+                      <label htmlFor="relationship_type">Relationship to Main Tenant*</label>
+                      <select
+                        id="relationship_type"
+                        name="relationship_type"
+                        value={formData.relationship_type || ''}
+                        onChange={handleChange}
+                      >
+                        <option value="">-- Select Relationship --</option>
+                        {relationshipTypes.map(type => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.relationship_type && <div className="error">{errors.relationship_type}</div>}
+                    </div>
+                  </div>
+
+                  {formData.main_tenant_id && (
+                    <div className="relationship-info-box">
+                      <div className="relationship-title">
+                        <strong>Relationship Information</strong>
+                      </div>
+                      <div className="relationship-content">
+                        <p>
+                          This tenant will be recorded as the {formData.relationship_type ?
+                            relationshipTypes.find(t => t.value === formData.relationship_type)?.label.toLowerCase() || 'related tenant'
+                            : 'related tenant'} of {getMainTenantName(formData.main_tenant_id)}.
+                        </p>
+                        <p>
+                          <strong>Note:</strong> Normal tenants may share the same housing as their main tenant
+                          or be assigned to different housing.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {formData.tenant_type === 'main' && editMode && relatedTenants.length > 0 && (
+                <div className="related-tenants-summary">
+                  <h4>Related Tenants</h4>
+                  <p>This main tenant has {relatedTenants.length} related tenant(s):</p>
+                  <ul className="related-tenants-list">
+                    {relatedTenants.map(tenant => (
+                      <li key={tenant.id}>
+                        {tenant.first_name} {tenant.last_name} - {
+                          relationshipTypes.find(t => t.value === tenant.relationship_type)?.label || 'Unknown relationship'
+                        }
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 
